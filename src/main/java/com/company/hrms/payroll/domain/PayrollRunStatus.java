@@ -1,0 +1,5 @@
+package com.company.hrms.payroll.domain;
+
+public enum PayrollRunStatus {
+    EXECUTED
+}
