@@ -60,8 +60,4 @@ public class LeaveRequest extends AuditableEntity {
     public void reject() {
         this.status = LeaveStatus.REJECTED;
     }
-
-    public void setStatus(LeaveStatus status) {
-        this.status = status;
-    }
 }
