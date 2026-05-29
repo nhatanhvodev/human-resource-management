@@ -8,9 +8,11 @@ import {
   WalletOutlined,
   MenuOutlined
 } from "@ant-design/icons";
-import { Button, Drawer, Layout, Menu, Typography } from "antd";
-import { useState } from "react";
+import { Button, Drawer, Layout, Menu, Tag, Typography } from "antd";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+
+import { DEV_SETTINGS_CHANGED, loadDevSettings } from "../../shared/config/devSettingsStore";
 
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
@@ -29,11 +31,25 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [devSettings, setDevSettings] = useState(loadDevSettings);
   const selectedKey = navItems.find((item) => location.pathname.startsWith(item.key))?.key ?? "/dashboard";
   const onNavigate = (key: string) => {
     navigate(key);
     setMobileNavOpen(false);
   };
+
+  useEffect(() => {
+    const syncDevSettings = () => setDevSettings(loadDevSettings());
+    window.addEventListener("storage", syncDevSettings);
+    window.addEventListener(DEV_SETTINGS_CHANGED, syncDevSettings);
+    window.addEventListener("focus", syncDevSettings);
+
+    return () => {
+      window.removeEventListener("storage", syncDevSettings);
+      window.removeEventListener(DEV_SETTINGS_CHANGED, syncDevSettings);
+      window.removeEventListener("focus", syncDevSettings);
+    };
+  }, []);
 
   return (
     <Layout className="app-shell">
@@ -58,7 +74,14 @@ export function AppShell() {
             />
             <Text strong>Admin workspace</Text>
           </div>
-          <Text type="secondary">Dev tenant mode</Text>
+          <div className="app-shell__status">
+            <Tag color={devSettings.tenantId ? "blue" : "default"}>
+              Tenant: {devSettings.tenantId || "not set"}
+            </Tag>
+            <Tag color={devSettings.token ? "green" : "gold"}>
+              Token: {devSettings.token ? "set" : "missing"}
+            </Tag>
+          </div>
         </Header>
         <Content className="app-shell__content">
           <Outlet />

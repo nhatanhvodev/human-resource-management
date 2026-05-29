@@ -5,6 +5,7 @@ export type DevSettings = {
 
 const TOKEN_KEY = "hrms.dev.token";
 const TENANT_KEY = "hrms.dev.tenant";
+export const DEV_SETTINGS_CHANGED = "hrms.dev.settings.changed";
 
 function readStorage(key: string): string {
   if (typeof window === "undefined") {
@@ -28,4 +29,5 @@ export function saveDevSettings(settings: DevSettings): void {
 
   window.localStorage.setItem(TOKEN_KEY, settings.token);
   window.localStorage.setItem(TENANT_KEY, settings.tenantId);
+  window.dispatchEvent(new Event(DEV_SETTINGS_CHANGED));
 }

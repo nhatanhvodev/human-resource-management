@@ -49,6 +49,22 @@ body {
   display: none;
 }
 
+.app-shell__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.app-shell__status .ant-tag {
+  margin-inline-end: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .app-shell__content {
   padding: 24px;
 }
@@ -85,6 +101,10 @@ body {
   border-radius: 8px;
 }
 
+.error-page {
+  padding: 24px;
+}
+
 @media (max-width: 768px) {
   .app-shell__content {
     padding: 16px;
@@ -100,5 +120,9 @@ body {
 
   .app-shell__mobile-nav .ant-drawer-body {
     padding: 0;
+  }
+
+  .app-shell__status .ant-tag {
+    max-width: 96px;
   }
 }
