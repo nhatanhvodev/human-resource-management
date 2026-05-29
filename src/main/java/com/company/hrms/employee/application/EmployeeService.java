@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -96,7 +97,7 @@ public class EmployeeService {
 
     private static EmploymentStatus parseStatus(String status) {
         try {
-            return EmploymentStatus.valueOf(status.toUpperCase());
+            return EmploymentStatus.valueOf(status.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("INVALID_EMPLOYMENT_STATUS");
         }

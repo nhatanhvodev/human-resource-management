@@ -102,6 +102,40 @@ class EmployeeAdminApiIT {
             .andExpect(jsonPath("$.hireDate").value("2026-05-24"));
     }
 
+    @Test
+    void rejectsInvalidUpdatePayloadWithBadRequest() throws Exception {
+        String sourceDepartmentId = createDepartment("tenant-a", "ENG-UPD-INVALID", "Engineering Invalid Update");
+        String employeeId = createEmployee("tenant-a", "E-UPD-INVALID", "Before Invalid", sourceDepartmentId, "2026-05-25");
+
+        mvc.perform(put("/api/v1/employees/{id}", employeeId)
+                .header("X-Tenant-Id", "tenant-a")
+                .with(jwt().authorities(new SimpleGrantedAuthority("employee:update")))
+                .contentType("application/json")
+                .content("""
+                    {
+                      "fullName":" ",
+                      "departmentId":null,
+                      "hireDate":null
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void rejectsNullStatusPayloadWithBadRequest() throws Exception {
+        String departmentId = createDepartment("tenant-a", "ENG-STATUS-INVALID", "Engineering Invalid Status");
+        String employeeId = createEmployee("tenant-a", "E-STATUS-INVALID", "Status Invalid", departmentId, "2026-05-26");
+
+        mvc.perform(patch("/api/v1/employees/{id}/status", employeeId)
+                .header("X-Tenant-Id", "tenant-a")
+                .with(jwt().authorities(new SimpleGrantedAuthority("employee:update")))
+                .contentType("application/json")
+                .content("{\"employmentStatus\":null}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
     private String createDepartment(String tenantId, String code, String name) throws Exception {
         MvcResult result = mvc.perform(post("/api/v1/departments")
                 .header("X-Tenant-Id", tenantId)

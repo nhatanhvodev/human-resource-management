@@ -4,6 +4,7 @@ import com.company.hrms.employee.application.EmployeeService;
 import com.company.hrms.employee.domain.Employee;
 import com.company.hrms.employee.domain.EmploymentStatus;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
@@ -51,7 +52,7 @@ public class EmployeeController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('employee:create')")
-    public EmployeeResponse create(@RequestBody CreateEmployeeRequest request) {
+    public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
         return toResponse(employeeService.create(
             request.employeeNo(),
             request.fullName(),
@@ -62,7 +63,7 @@ public class EmployeeController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('employee:update')")
-    public EmployeeResponse update(@PathVariable UUID id, @RequestBody UpdateEmployeeRequest request) {
+    public EmployeeResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateEmployeeRequest request) {
         return toResponse(employeeService.update(
             id,
             request.fullName(),
@@ -73,7 +74,7 @@ public class EmployeeController {
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('employee:update')")
-    public EmployeeResponse patchStatus(@PathVariable UUID id, @RequestBody UpdateStatusRequest request) {
+    public EmployeeResponse patchStatus(@PathVariable UUID id, @Valid @RequestBody UpdateStatusRequest request) {
         return toResponse(employeeService.changeStatus(id, request.employmentStatus()));
     }
 
