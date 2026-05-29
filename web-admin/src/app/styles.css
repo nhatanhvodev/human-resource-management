@@ -38,6 +38,17 @@ body {
   border-bottom: 1px solid #e6eaf2;
 }
 
+.app-shell__header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.app-shell__menu-button {
+  display: none;
+}
+
 .app-shell__content {
   padding: 24px;
 }
@@ -81,5 +92,13 @@ body {
 
   .app-shell__header {
     padding: 0 16px;
+  }
+
+  .app-shell__menu-button {
+    display: inline-flex;
+  }
+
+  .app-shell__mobile-nav .ant-drawer-body {
+    padding: 0;
   }
 }

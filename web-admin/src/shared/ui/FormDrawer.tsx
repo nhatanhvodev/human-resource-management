@@ -10,7 +10,7 @@ type FormDrawerProps = {
 
 export function FormDrawer({ children, open, title, onClose }: FormDrawerProps) {
   return (
-    <Drawer width={420} title={title} open={open} onClose={onClose} destroyOnClose>
+    <Drawer width="min(420px, calc(100vw - 32px))" title={title} open={open} onClose={onClose} destroyOnClose>
       {children}
     </Drawer>
   );
