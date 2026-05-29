@@ -48,4 +48,9 @@ public class Department extends AuditableEntity {
     public String getName() {
         return name;
     }
+
+    public void update(String code, String name) {
+        this.code = code;
+        this.name = name;
+    }
 }
