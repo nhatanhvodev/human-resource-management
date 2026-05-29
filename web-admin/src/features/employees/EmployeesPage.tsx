@@ -1,11 +1,12 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Segmented, Space } from "antd";
+import { Alert, Button, Form, Input, Segmented, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
+import { FormDrawer } from "../../shared/ui/FormDrawer";
 import { PageToolbar } from "../../shared/ui/PageToolbar";
 import { StatusTag } from "../../shared/ui/StatusTag";
 
@@ -30,6 +31,7 @@ export default function EmployeesPage() {
   const [data, setData] = useState<PageResponse<Employee>>(emptyPage);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -101,7 +103,7 @@ export default function EmployeesPage() {
           options={["ALL", "ACTIVE", "INACTIVE"]}
           onChange={(value) => setStatus(String(value))}
         />
-        <Button type="primary" icon={<PlusOutlined />}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
           Them nhan vien
         </Button>
       </PageToolbar>
@@ -115,6 +117,23 @@ export default function EmployeesPage() {
         columns={columns}
         pagination={{ current: data.page + 1, pageSize: data.size, total: data.totalItems }}
       />
+
+      <FormDrawer open={openCreate} title="Them nhan vien" onClose={() => setOpenCreate(false)}>
+        <Form layout="vertical">
+          <Form.Item label="Ma nhan vien" htmlFor="employee-code">
+            <Input id="employee-code" />
+          </Form.Item>
+          <Form.Item label="Ho va ten" htmlFor="employee-name">
+            <Input id="employee-name" />
+          </Form.Item>
+          <Form.Item label="Phong ban" htmlFor="employee-department">
+            <Input id="employee-department" />
+          </Form.Item>
+          <Button type="primary" onClick={() => setOpenCreate(false)}>
+            Luu nhan vien
+          </Button>
+        </Form>
+      </FormDrawer>
     </>
   );
 }

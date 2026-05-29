@@ -1,10 +1,11 @@
-import { Alert, Button, Drawer, Space } from "antd";
+import { Alert, Button, Drawer, Form, Input, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
+import { FormDrawer } from "../../shared/ui/FormDrawer";
 import { PageToolbar } from "../../shared/ui/PageToolbar";
 import { StatusTag } from "../../shared/ui/StatusTag";
 
@@ -25,6 +26,7 @@ export default function PayrollPage() {
   const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [openRuns, setOpenRuns] = useState(false);
+  const [openPeriod, setOpenPeriod] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,7 +118,9 @@ export default function PayrollPage() {
 
       <PageToolbar>
         <Space />
-        <Button type="primary">Create payroll period</Button>
+        <Button type="primary" onClick={() => setOpenPeriod(true)}>
+          Create payroll period
+        </Button>
       </PageToolbar>
 
       {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
@@ -132,6 +136,20 @@ export default function PayrollPage() {
       <Drawer title="Payroll runs" width={520} open={openRuns} onClose={() => setOpenRuns(false)}>
         <AppTable<PayrollRun> rowKey="id" columns={runColumns} dataSource={runs} pagination={false} />
       </Drawer>
+
+      <FormDrawer open={openPeriod} title="Create payroll period" onClose={() => setOpenPeriod(false)}>
+        <Form layout="vertical">
+          <Form.Item label="Tu ngay" htmlFor="payroll-start">
+            <Input id="payroll-start" type="date" />
+          </Form.Item>
+          <Form.Item label="Den ngay" htmlFor="payroll-end">
+            <Input id="payroll-end" type="date" />
+          </Form.Item>
+          <Button type="primary" onClick={() => setOpenPeriod(false)}>
+            Tao ky
+          </Button>
+        </Form>
+      </FormDrawer>
     </>
   );
 }
