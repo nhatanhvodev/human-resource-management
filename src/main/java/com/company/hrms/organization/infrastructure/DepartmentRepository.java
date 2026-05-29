@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DepartmentRepository extends JpaRepository<Department, UUID> {
+    long countByTenantId(String tenantId);
+
     boolean existsByTenantIdAndCode(String tenantId, String code);
 
     Optional<Department> findByIdAndTenantId(UUID id, String tenantId);

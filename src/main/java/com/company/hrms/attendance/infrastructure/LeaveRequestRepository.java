@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID> {
+    long countByTenantIdAndStatus(String tenantId, LeaveStatus status);
+
     Optional<LeaveRequest> findByIdAndTenantId(UUID id, String tenantId);
 
     Page<LeaveRequest> findAllByTenantId(String tenantId, Pageable pageable);

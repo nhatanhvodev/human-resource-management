@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
+    long countByTenantId(String tenantId);
+
     boolean existsByTenantIdAndEmployeeNo(String tenantId, String employeeNo);
 
     Optional<Employee> findByIdAndTenantId(UUID id, String tenantId);
