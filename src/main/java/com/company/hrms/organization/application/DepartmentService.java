@@ -66,11 +66,9 @@ public class DepartmentService {
 
     @Transactional
     public void delete(UUID id) {
+        String tenantId = TenantContext.get();
         Department department = getById(id);
-        boolean departmentInUse = employeeRepository.findAllByTenantId(TenantContext.get())
-            .stream()
-            .anyMatch(employee -> employee.getDepartment().getId().equals(id));
-        if (departmentInUse) {
+        if (employeeRepository.existsByTenantIdAndDepartment_Id(tenantId, id)) {
             throw new ConflictException("DEPARTMENT_IN_USE");
         }
         departmentRepository.delete(department);

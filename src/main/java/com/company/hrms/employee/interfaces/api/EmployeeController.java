@@ -2,20 +2,24 @@ package com.company.hrms.employee.interfaces.api;
 
 import com.company.hrms.employee.application.EmployeeService;
 import com.company.hrms.employee.domain.Employee;
+import com.company.hrms.employee.domain.EmploymentStatus;
+import com.company.hrms.shared.interfaces.api.PageResponse;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,8 +34,13 @@ public class EmployeeController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('employee:read')")
-    public List<EmployeeResponse> list() {
-        return employeeService.list().stream().map(EmployeeController::toResponse).toList();
+    public PageResponse<EmployeeResponse> list(@RequestParam(required = false) String q,
+                                               @RequestParam(required = false) String status,
+                                               Pageable pageable) {
+        return PageResponse.from(
+            employeeService.list(q, status, pageable)
+                .map(EmployeeController::toResponse)
+        );
     }
 
     @GetMapping("/{id}")
@@ -51,10 +60,21 @@ public class EmployeeController {
         ));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('employee:update')")
-    public EmployeeResponse patch(@PathVariable UUID id) {
-        return toResponse(employeeService.getById(id));
+    public EmployeeResponse update(@PathVariable UUID id, @RequestBody UpdateEmployeeRequest request) {
+        return toResponse(employeeService.update(
+            id,
+            request.fullName(),
+            request.departmentId(),
+            request.hireDate()
+        ));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('employee:update')")
+    public EmployeeResponse patchStatus(@PathVariable UUID id, @RequestBody UpdateStatusRequest request) {
+        return toResponse(employeeService.changeStatus(id, request.employmentStatus()));
     }
 
     private static EmployeeResponse toResponse(Employee employee) {
@@ -72,6 +92,14 @@ public class EmployeeController {
                                         @NotBlank String fullName,
                                         @NotNull UUID departmentId,
                                         @NotNull LocalDate hireDate) {
+    }
+
+    public record UpdateEmployeeRequest(@NotBlank String fullName,
+                                        @NotNull UUID departmentId,
+                                        @NotNull LocalDate hireDate) {
+    }
+
+    public record UpdateStatusRequest(@NotNull EmploymentStatus employmentStatus) {
     }
 
     public record EmployeeResponse(UUID id,
