@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { AppShell } from "./layout/AppShell";
 import DashboardPage from "../features/dashboard/DashboardPage";
+import DepartmentsPage from "../features/departments/DepartmentsPage";
+import EmployeesPage from "../features/employees/EmployeesPage";
 import DevSettingsPage from "../features/settings/DevSettingsPage";
 
 export const router = createBrowserRouter([
@@ -16,6 +18,14 @@ export const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <DashboardPage />
+      },
+      {
+        path: "departments",
+        element: <DepartmentsPage />
+      },
+      {
+        path: "employees",
+        element: <EmployeesPage />
       },
       {
         path: "settings",
