@@ -3,13 +3,17 @@ package com.company.hrms.payroll.interfaces.api;
 import com.company.hrms.payroll.application.PayrollService;
 import com.company.hrms.payroll.domain.PayrollPeriod;
 import com.company.hrms.payroll.domain.PayrollRun;
+import com.company.hrms.shared.interfaces.api.PageResponse;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
@@ -25,11 +29,29 @@ public class PayrollController {
         this.payrollService = payrollService;
     }
 
+    @GetMapping("/payroll-periods")
+    @PreAuthorize("hasAuthority('payroll:read')")
+    public PageResponse<PayrollPeriodResponse> listPeriods(Pageable pageable) {
+        return PageResponse.from(
+            payrollService.listPeriods(pageable)
+                .map(period -> new PayrollPeriodResponse(period.getId(), period.getStatus().name()))
+        );
+    }
+
     @PostMapping("/payroll-periods")
     @PreAuthorize("hasAuthority('payroll:create')")
     public PayrollPeriodResponse createPeriod(@RequestBody CreatePeriodRequest request) {
         PayrollPeriod period = payrollService.createPeriod(request.fromDate(), request.toDate());
         return new PayrollPeriodResponse(period.getId(), period.getStatus().name());
+    }
+
+    @GetMapping("/payroll-runs")
+    @PreAuthorize("hasAuthority('payroll:read')")
+    public PageResponse<PayrollRunResponse> listRuns(@RequestParam UUID periodId, Pageable pageable) {
+        return PageResponse.from(
+            payrollService.listRuns(periodId, pageable)
+                .map(run -> new PayrollRunResponse(run.getId()))
+        );
     }
 
     @PostMapping("/payroll-runs/{periodId}/execute")

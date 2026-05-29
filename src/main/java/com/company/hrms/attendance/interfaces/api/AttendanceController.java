@@ -2,13 +2,17 @@ package com.company.hrms.attendance.interfaces.api;
 
 import com.company.hrms.attendance.application.AttendanceService;
 import com.company.hrms.attendance.domain.LeaveRequest;
+import com.company.hrms.shared.interfaces.api.PageResponse;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
@@ -24,6 +28,15 @@ public class AttendanceController {
         this.attendanceService = attendanceService;
     }
 
+    @GetMapping("/leave-requests")
+    @PreAuthorize("hasAuthority('leave:read')")
+    public PageResponse<LeaveResponse> list(@RequestParam(required = false) String status, Pageable pageable) {
+        return PageResponse.from(
+            attendanceService.list(status, pageable)
+                .map(leaveRequest -> new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name()))
+        );
+    }
+
     @PostMapping("/leave-requests")
     @PreAuthorize("hasAuthority('leave:create')")
     public LeaveResponse create(@RequestBody CreateLeaveRequest request) {
@@ -35,6 +48,13 @@ public class AttendanceController {
     @PreAuthorize("hasAuthority('leave:approve')")
     public LeaveResponse approve(@PathVariable UUID id) {
         LeaveRequest leaveRequest = attendanceService.approve(id);
+        return new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name());
+    }
+
+    @PostMapping("/leave-requests/{id}/reject")
+    @PreAuthorize("hasAuthority('leave:approve')")
+    public LeaveResponse reject(@PathVariable UUID id) {
+        LeaveRequest leaveRequest = attendanceService.reject(id);
         return new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name());
     }
 
