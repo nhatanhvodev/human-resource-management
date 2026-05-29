@@ -1,14 +1,20 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 
 import { loadDevSettings } from "../config/devSettingsStore";
 
 export type DevSettings = { token: string; tenantId: string };
 
 export function buildHeaders(settings: DevSettings) {
-  return {
-    Authorization: `Bearer ${settings.token}`,
+  const headers: { Authorization?: string; "X-Tenant-Id": string } = {
     "X-Tenant-Id": settings.tenantId
   };
+
+  const token = settings.token.trim();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 export const apiClient = axios.create({
@@ -16,10 +22,16 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const settings = loadDevSettings();
-  config.headers = {
-    ...(config.headers ?? {}),
-    ...buildHeaders(settings)
-  };
+  const mergedHeaders = AxiosHeaders.from(config.headers);
+  const headers = buildHeaders(loadDevSettings());
+
+  mergedHeaders.set("X-Tenant-Id", headers["X-Tenant-Id"]);
+  if (headers.Authorization) {
+    mergedHeaders.set("Authorization", headers.Authorization);
+  } else {
+    mergedHeaders.delete("Authorization");
+  }
+
+  config.headers = mergedHeaders;
   return config;
 });

@@ -9,4 +9,11 @@ describe("buildHeaders", () => {
     expect(headers.Authorization).toBe("Bearer abc");
     expect(headers["X-Tenant-Id"]).toBe("tenant-a");
   });
+
+  it("does not include Authorization when token is empty", () => {
+    const headers = buildHeaders({ token: "", tenantId: "tenant-a" });
+
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers["X-Tenant-Id"]).toBe("tenant-a");
+  });
 });
