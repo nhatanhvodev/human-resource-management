@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.UUID;
+
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -102,6 +104,30 @@ class RecruitmentAdminApiIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(jobPostingId))
             .andExpect(jsonPath("$.title").value("Senior QA Engineer"));
+    }
+
+    @Test
+    void updateCandidateReturnsNotFoundForUnknownId() throws Exception {
+        mvc.perform(put("/api/v1/candidates/{id}", UUID.randomUUID())
+                .header("X-Tenant-Id", "tenant-r-candidate-missing")
+                .with(jwt().authorities(new SimpleGrantedAuthority("recruitment:update")))
+                .contentType("application/json")
+                .content("{\"fullName\":\"Missing Candidate\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+            .andExpect(jsonPath("$.message").value("CANDIDATE_NOT_FOUND"));
+    }
+
+    @Test
+    void updateJobPostingReturnsNotFoundForUnknownId() throws Exception {
+        mvc.perform(put("/api/v1/job-postings/{id}", UUID.randomUUID())
+                .header("X-Tenant-Id", "tenant-r-posting-missing")
+                .with(jwt().authorities(new SimpleGrantedAuthority("recruitment:update")))
+                .contentType("application/json")
+                .content("{\"title\":\"Missing Posting\"}"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+            .andExpect(jsonPath("$.message").value("JOB_POSTING_NOT_FOUND"));
     }
 
     private String createCandidate(String tenantId, String fullName) throws Exception {

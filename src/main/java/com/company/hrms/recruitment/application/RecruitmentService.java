@@ -10,6 +10,7 @@ import com.company.hrms.recruitment.infrastructure.CandidateRepository;
 import com.company.hrms.recruitment.infrastructure.JobPostingRepository;
 import com.company.hrms.recruitment.infrastructure.RecruitmentApplicationRepository;
 import com.company.hrms.shared.exception.ConflictException;
+import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -52,7 +53,7 @@ public class RecruitmentService {
         String tenantId = TenantContext.get();
         Candidate candidate = candidateRepository.findById(id)
             .filter(existing -> tenantId.equals(existing.getTenantId()))
-            .orElseThrow(() -> new IllegalArgumentException("CANDIDATE_NOT_FOUND"));
+            .orElseThrow(() -> new NotFoundException("CANDIDATE_NOT_FOUND"));
         candidate.updateFullName(fullName);
         return candidate;
     }
@@ -72,7 +73,7 @@ public class RecruitmentService {
         String tenantId = TenantContext.get();
         JobPosting jobPosting = jobPostingRepository.findById(id)
             .filter(existing -> tenantId.equals(existing.getTenantId()))
-            .orElseThrow(() -> new IllegalArgumentException("JOB_POSTING_NOT_FOUND"));
+            .orElseThrow(() -> new NotFoundException("JOB_POSTING_NOT_FOUND"));
         jobPosting.updateTitle(title);
         return jobPosting;
     }

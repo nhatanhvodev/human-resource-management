@@ -6,6 +6,7 @@ import com.company.hrms.recruitment.domain.Candidate;
 import com.company.hrms.recruitment.domain.JobPosting;
 import com.company.hrms.recruitment.domain.RecruitmentApplication;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
@@ -43,14 +44,14 @@ public class RecruitmentController {
 
     @PostMapping("/candidates")
     @PreAuthorize("hasAuthority('recruitment:create')")
-    public CandidateResponse createCandidate(@RequestBody CreateCandidateRequest request) {
+    public CandidateResponse createCandidate(@Valid @RequestBody CreateCandidateRequest request) {
         Candidate candidate = recruitmentService.createCandidate(request.fullName());
         return new CandidateResponse(candidate.getId(), candidate.getFullName());
     }
 
     @PutMapping("/candidates/{id}")
     @PreAuthorize("hasAuthority('recruitment:update')")
-    public CandidateResponse updateCandidate(@PathVariable UUID id, @RequestBody CreateCandidateRequest request) {
+    public CandidateResponse updateCandidate(@PathVariable UUID id, @Valid @RequestBody CreateCandidateRequest request) {
         Candidate candidate = recruitmentService.updateCandidate(id, request.fullName());
         return new CandidateResponse(candidate.getId(), candidate.getFullName());
     }
@@ -66,14 +67,14 @@ public class RecruitmentController {
 
     @PostMapping("/job-postings")
     @PreAuthorize("hasAuthority('recruitment:create')")
-    public JobPostingResponse createJobPosting(@RequestBody CreateJobPostingRequest request) {
+    public JobPostingResponse createJobPosting(@Valid @RequestBody CreateJobPostingRequest request) {
         JobPosting jobPosting = recruitmentService.createJobPosting(request.title());
         return new JobPostingResponse(jobPosting.getId(), jobPosting.getTitle());
     }
 
     @PutMapping("/job-postings/{id}")
     @PreAuthorize("hasAuthority('recruitment:update')")
-    public JobPostingResponse updateJobPosting(@PathVariable UUID id, @RequestBody CreateJobPostingRequest request) {
+    public JobPostingResponse updateJobPosting(@PathVariable UUID id, @Valid @RequestBody CreateJobPostingRequest request) {
         JobPosting jobPosting = recruitmentService.updateJobPosting(id, request.title());
         return new JobPostingResponse(jobPosting.getId(), jobPosting.getTitle());
     }
@@ -89,7 +90,7 @@ public class RecruitmentController {
 
     @PostMapping("/applications")
     @PreAuthorize("hasAuthority('recruitment:create')")
-    public ApplicationResponse createApplication(@RequestBody CreateApplicationRequest request) {
+    public ApplicationResponse createApplication(@Valid @RequestBody CreateApplicationRequest request) {
         RecruitmentApplication application = recruitmentService.createApplication(
             request.candidateId(),
             request.jobPostingId(),
@@ -100,7 +101,7 @@ public class RecruitmentController {
 
     @PostMapping("/recruitment/applications/{applicationId}/convert")
     @PreAuthorize("hasAuthority('recruitment:convert')")
-    public ConversionResponse convert(@PathVariable UUID applicationId, @RequestBody ConvertRequest request) {
+    public ConversionResponse convert(@PathVariable UUID applicationId, @Valid @RequestBody ConvertRequest request) {
         RecruitmentService.ConversionResult result = recruitmentService.convertToEmployee(
             applicationId,
             request.employeeNo(),
