@@ -1,11 +1,8 @@
-import { Typography } from "antd";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { AppShell } from "./layout/AppShell";
-
-function PlaceholderDashboard() {
-  return <Typography.Text>Dashboard</Typography.Text>;
-}
+import DashboardPage from "../features/dashboard/DashboardPage";
+import DevSettingsPage from "../features/settings/DevSettingsPage";
 
 export const router = createBrowserRouter([
   {
@@ -14,7 +11,15 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <PlaceholderDashboard />
+        element: <Navigate to="/dashboard" replace />
+      },
+      {
+        path: "dashboard",
+        element: <DashboardPage />
+      },
+      {
+        path: "settings",
+        element: <DevSettingsPage />
       }
     ]
   }

@@ -5,3 +5,4 @@ web-admin/dist/
 web-admin/coverage/
 web-admin/playwright-report/
 web-admin/test-results/
+web-admin/*.tsbuildinfo
