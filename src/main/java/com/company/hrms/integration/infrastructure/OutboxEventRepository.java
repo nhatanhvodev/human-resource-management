@@ -8,5 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> {
+    List<OutboxEvent> findTop20ByTenantIdOrderByCreatedAtDesc(String tenantId);
+
     List<OutboxEvent> findTop100ByStatus(OutboxStatus status);
 }

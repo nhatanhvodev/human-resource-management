@@ -7,11 +7,13 @@ import com.company.hrms.organization.domain.Department;
 import com.company.hrms.organization.infrastructure.DepartmentRepository;
 import com.company.hrms.shared.exception.ConflictException;
 import com.company.hrms.shared.tenant.TenantContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -46,13 +48,58 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
-    public List<Employee> list() {
-        return employeeRepository.findAllByTenantId(TenantContext.get());
+    public Page<Employee> list(String query, String status, Pageable pageable) {
+        String tenantId = TenantContext.get();
+        String normalizedQuery = query == null ? null : query.trim();
+        String normalizedStatus = status == null ? null : status.trim();
+
+        if (normalizedStatus != null && !normalizedStatus.isEmpty()) {
+            EmploymentStatus employmentStatus = parseStatus(normalizedStatus);
+            if (normalizedQuery != null && !normalizedQuery.isEmpty()) {
+                return employeeRepository.findByTenantIdAndEmploymentStatusAndFullNameContainingIgnoreCase(
+                    tenantId, employmentStatus, normalizedQuery, pageable
+                );
+            }
+            return employeeRepository.findByTenantIdAndEmploymentStatus(tenantId, employmentStatus, pageable);
+        }
+
+        if (normalizedQuery != null && !normalizedQuery.isEmpty()) {
+            return employeeRepository.findByTenantIdAndFullNameContainingIgnoreCase(tenantId, normalizedQuery, pageable);
+        }
+
+        return employeeRepository.findAllByTenantId(tenantId, pageable);
     }
 
     @Transactional(readOnly = true)
     public Employee getById(UUID id) {
         return employeeRepository.findByIdAndTenantId(id, TenantContext.get())
             .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));
+    }
+
+    @Transactional
+    public Employee update(UUID id, String fullName, UUID departmentId, LocalDate hireDate) {
+        String tenantId = TenantContext.get();
+        Employee employee = employeeRepository.findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));
+        Department department = departmentRepository.findByIdAndTenantId(departmentId, tenantId)
+            .orElseThrow(() -> new IllegalArgumentException("DEPARTMENT_NOT_FOUND"));
+        employee.updateProfile(fullName, department, hireDate);
+        return employee;
+    }
+
+    @Transactional
+    public Employee changeStatus(UUID id, EmploymentStatus status) {
+        Employee employee = employeeRepository.findByIdAndTenantId(id, TenantContext.get())
+            .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));
+        employee.changeStatus(status);
+        return employee;
+    }
+
+    private static EmploymentStatus parseStatus(String status) {
+        try {
+            return EmploymentStatus.valueOf(status.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("INVALID_EMPLOYMENT_STATUS");
+        }
     }
 }

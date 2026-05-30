@@ -87,4 +87,14 @@ public class Employee extends AuditableEntity {
     public EmploymentStatus getEmploymentStatus() {
         return employmentStatus;
     }
+
+    public void updateProfile(String fullName, Department department, LocalDate hireDate) {
+        this.fullName = fullName;
+        this.department = department;
+        this.hireDate = hireDate;
+    }
+
+    public void changeStatus(EmploymentStatus status) {
+        this.employmentStatus = status;
+    }
 }

@@ -40,4 +40,8 @@ public class JobPosting extends AuditableEntity {
     public String getTitle() {
         return title;
     }
+
+    public void updateTitle(String title) {
+        this.title = title;
+    }
 }

@@ -10,11 +10,15 @@ import com.company.hrms.recruitment.infrastructure.CandidateRepository;
 import com.company.hrms.recruitment.infrastructure.JobPostingRepository;
 import com.company.hrms.recruitment.infrastructure.RecruitmentApplicationRepository;
 import com.company.hrms.shared.exception.ConflictException;
+import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -34,14 +38,58 @@ public class RecruitmentService {
         this.employeeService = employeeService;
     }
 
+    @Transactional(readOnly = true)
+    public Page<Candidate> listCandidates(Pageable pageable) {
+        return candidateRepository.findAllByTenantId(TenantContext.get(), pageable);
+    }
+
     @Transactional
     public Candidate createCandidate(String fullName) {
         return candidateRepository.save(new Candidate(UUID.randomUUID(), TenantContext.get(), fullName));
     }
 
     @Transactional
+    public Candidate updateCandidate(UUID id, String fullName) {
+        String tenantId = TenantContext.get();
+        Candidate candidate = candidateRepository.findById(id)
+            .filter(existing -> tenantId.equals(existing.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("CANDIDATE_NOT_FOUND"));
+        candidate.updateFullName(fullName);
+        return candidate;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<JobPosting> listJobPostings(Pageable pageable) {
+        return jobPostingRepository.findAllByTenantId(TenantContext.get(), pageable);
+    }
+
+    @Transactional
     public JobPosting createJobPosting(String title) {
         return jobPostingRepository.save(new JobPosting(UUID.randomUUID(), TenantContext.get(), title));
+    }
+
+    @Transactional
+    public JobPosting updateJobPosting(UUID id, String title) {
+        String tenantId = TenantContext.get();
+        JobPosting jobPosting = jobPostingRepository.findById(id)
+            .filter(existing -> tenantId.equals(existing.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("JOB_POSTING_NOT_FOUND"));
+        jobPosting.updateTitle(title);
+        return jobPosting;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RecruitmentApplication> listApplications(String status, Pageable pageable) {
+        String tenantId = TenantContext.get();
+        String normalizedStatus = status == null ? null : status.trim();
+        if (normalizedStatus == null || normalizedStatus.isEmpty()) {
+            return recruitmentApplicationRepository.findAllByTenantId(tenantId, pageable);
+        }
+        return recruitmentApplicationRepository.findByTenantIdAndStatus(
+            tenantId,
+            parseStatus(normalizedStatus),
+            pageable
+        );
     }
 
     @Transactional
@@ -70,6 +118,14 @@ public class RecruitmentService {
         );
         application.setStatus(ApplicationStatus.HIRED);
         return new ConversionResult(employee.getId(), application.getId(), application.getStatus().name());
+    }
+
+    private static ApplicationStatus parseStatus(String status) {
+        try {
+            return ApplicationStatus.valueOf(status.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("INVALID_APPLICATION_STATUS");
+        }
     }
 
     public record ConversionResult(UUID employeeId, UUID applicationId, String applicationStatus) {

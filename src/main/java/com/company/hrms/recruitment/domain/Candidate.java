@@ -40,4 +40,8 @@ public class Candidate extends AuditableEntity {
     public String getFullName() {
         return fullName;
     }
+
+    public void updateFullName(String fullName) {
+        this.fullName = fullName;
+    }
 }

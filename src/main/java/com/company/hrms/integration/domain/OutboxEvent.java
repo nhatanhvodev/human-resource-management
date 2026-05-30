@@ -48,6 +48,14 @@ public class OutboxEvent extends AuditableEntity {
         return status;
     }
 
+    public String getEventType() {
+        return eventType;
+    }
+
+    public String getPayload() {
+        return payload;
+    }
+
     public void markSent() {
         this.status = OutboxStatus.SENT;
     }

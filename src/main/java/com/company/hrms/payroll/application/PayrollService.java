@@ -8,6 +8,8 @@ import com.company.hrms.payroll.infrastructure.PayrollPeriodRepository;
 import com.company.hrms.payroll.infrastructure.PayrollRunRepository;
 import com.company.hrms.shared.exception.ConflictException;
 import com.company.hrms.shared.tenant.TenantContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,5 +55,15 @@ public class PayrollService {
             .orElseThrow(() -> new IllegalArgumentException("PAYROLL_PERIOD_NOT_FOUND"));
         period.close();
         return period;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PayrollPeriod> listPeriods(Pageable pageable) {
+        return payrollPeriodRepository.findAllByTenantId(TenantContext.get(), pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PayrollRun> listRuns(UUID periodId, Pageable pageable) {
+        return payrollRunRepository.findByTenantIdAndPayrollPeriodId(TenantContext.get(), periodId, pageable);
     }
 }
