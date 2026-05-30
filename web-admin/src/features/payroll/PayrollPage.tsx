@@ -133,7 +133,7 @@ export default function PayrollPage() {
         pagination={false}
       />
 
-      <Drawer title="Payroll runs" width={520} open={openRuns} onClose={() => setOpenRuns(false)}>
+      <Drawer title="Payroll runs" width="min(520px, calc(100vw - 32px))" open={openRuns} onClose={() => setOpenRuns(false)}>
         <AppTable<PayrollRun> rowKey="id" columns={runColumns} dataSource={runs} pagination={false} />
       </Drawer>
 
