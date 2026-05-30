@@ -33,7 +33,7 @@ public class AttendanceController {
     public PageResponse<LeaveResponse> list(@RequestParam(required = false) String status, Pageable pageable) {
         return PageResponse.from(
             attendanceService.list(status, pageable)
-                .map(leaveRequest -> new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name()))
+                .map(AttendanceController::toResponse)
         );
     }
 
@@ -41,26 +41,36 @@ public class AttendanceController {
     @PreAuthorize("hasAuthority('leave:create')")
     public LeaveResponse create(@RequestBody CreateLeaveRequest request) {
         LeaveRequest leaveRequest = attendanceService.createLeaveRequest(request.employeeId(), request.fromDate(), request.toDate());
-        return new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name());
+        return toResponse(leaveRequest);
     }
 
     @PostMapping("/leave-requests/{id}/approve")
     @PreAuthorize("hasAuthority('leave:approve')")
     public LeaveResponse approve(@PathVariable UUID id) {
         LeaveRequest leaveRequest = attendanceService.approve(id);
-        return new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name());
+        return toResponse(leaveRequest);
     }
 
     @PostMapping("/leave-requests/{id}/reject")
     @PreAuthorize("hasAuthority('leave:approve')")
     public LeaveResponse reject(@PathVariable UUID id) {
         LeaveRequest leaveRequest = attendanceService.reject(id);
-        return new LeaveResponse(leaveRequest.getId(), leaveRequest.getStatus().name());
+        return toResponse(leaveRequest);
+    }
+
+    private static LeaveResponse toResponse(LeaveRequest leaveRequest) {
+        return new LeaveResponse(
+            leaveRequest.getId(),
+            leaveRequest.getEmployeeId(),
+            leaveRequest.getFromDate(),
+            leaveRequest.getToDate(),
+            leaveRequest.getStatus().name()
+        );
     }
 
     public record CreateLeaveRequest(@NotNull UUID employeeId, @NotNull LocalDate fromDate, @NotNull LocalDate toDate) {
     }
 
-    public record LeaveResponse(UUID id, String status) {
+    public record LeaveResponse(UUID id, UUID employeeId, LocalDate fromDate, LocalDate toDate, String status) {
     }
 }

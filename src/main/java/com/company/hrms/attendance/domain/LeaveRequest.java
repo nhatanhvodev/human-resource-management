@@ -49,6 +49,18 @@ public class LeaveRequest extends AuditableEntity {
         return id;
     }
 
+    public UUID getEmployeeId() {
+        return employeeId;
+    }
+
+    public LocalDate getFromDate() {
+        return fromDate;
+    }
+
+    public LocalDate getToDate() {
+        return toDate;
+    }
+
     public LeaveStatus getStatus() {
         return status;
     }

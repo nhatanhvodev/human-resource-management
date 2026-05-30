@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: hrms
       POSTGRES_PASSWORD: hrms
     ports:
-      - "5432:5432"
+      - "15432:5432"
 
   redis:
     image: redis:7

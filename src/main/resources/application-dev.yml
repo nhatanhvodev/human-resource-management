@@ -1,6 +1,7 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/hrms
+    url: jdbc:postgresql://localhost:15432/hrms
+    driver-class-name: org.postgresql.Driver
     username: hrms
     password: hrms
   data:

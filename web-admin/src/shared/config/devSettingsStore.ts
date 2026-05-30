@@ -5,20 +5,27 @@ export type DevSettings = {
 
 const TOKEN_KEY = "hrms.dev.token";
 const TENANT_KEY = "hrms.dev.tenant";
+const DEFAULT_LOCAL_TOKEN = "local-test-token";
+const DEFAULT_LOCAL_TENANT = "tenant-demo";
 export const DEV_SETTINGS_CHANGED = "hrms.dev.settings.changed";
 
-function readStorage(key: string): string {
+function readStorage(key: string, fallback = ""): string {
   if (typeof window === "undefined") {
-    return "";
+    return fallback;
   }
 
-  return window.localStorage.getItem(key) ?? "";
+  const stored = window.localStorage.getItem(key);
+  return stored?.trim() ? stored : fallback;
+}
+
+function defaultValue(value: string): string {
+  return import.meta.env.DEV ? value : "";
 }
 
 export function loadDevSettings(): DevSettings {
   return {
-    token: readStorage(TOKEN_KEY),
-    tenantId: readStorage(TENANT_KEY)
+    token: readStorage(TOKEN_KEY, defaultValue(DEFAULT_LOCAL_TOKEN)),
+    tenantId: readStorage(TENANT_KEY, defaultValue(DEFAULT_LOCAL_TENANT))
   };
 }
 
