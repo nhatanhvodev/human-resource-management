@@ -1,6 +1,6 @@
 import { Alert, Button, Drawer, Form, Input, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -11,8 +11,6 @@ import { StatusTag } from "../../shared/ui/StatusTag";
 
 type PayrollPeriod = {
   id: string;
-  startDate?: string;
-  endDate?: string;
   status: string;
 };
 
@@ -28,38 +26,43 @@ export default function PayrollPage() {
   const [openRuns, setOpenRuns] = useState(false);
   const [openPeriod, setOpenPeriod] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [form] = Form.useForm<{ fromDate: string; toDate: string }>();
+
+  const loadPeriods = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get<PageResponse<PayrollPeriod>>("/payroll-periods", {
+        params: { page: 0, size: 10 }
+      });
+      setPeriods(response.data.items ?? []);
+    } catch {
+      setError("Unable to load payroll periods. Check token, tenant, and backend connectivity.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadPeriods() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await apiClient.get<PageResponse<PayrollPeriod>>("/payroll-periods", {
-          params: { page: 0, size: 10 }
-        });
-        if (mounted) {
-          setPeriods(response.data.items ?? []);
-        }
-      } catch {
-        if (mounted) {
-          setError("Unable to load payroll periods. Check token, tenant, and backend connectivity.");
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
     void loadPeriods();
+  }, [loadPeriods]);
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const createPeriod = async (values: { fromDate: string; toDate: string }) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiClient.post("/payroll-periods", values);
+      form.resetFields();
+      setOpenPeriod(false);
+      await loadPeriods();
+    } catch {
+      setError("Unable to create payroll period. Check date range and duplicate periods.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const openRunsDrawer = async (periodId: string) => {
     setOpenRuns(true);
@@ -73,9 +76,32 @@ export default function PayrollPage() {
     }
   };
 
+  const executePeriod = async (periodId: string) => {
+    setError(null);
+    try {
+      await apiClient.post(`/payroll-runs/${periodId}/execute`);
+      await openRunsDrawer(periodId);
+    } catch {
+      setError("Unable to execute payroll run for this period.");
+    }
+  };
+
+  const closePeriod = async (periodId: string) => {
+    setError(null);
+    try {
+      await apiClient.post(`/payroll-periods/${periodId}/close`);
+      await loadPeriods();
+    } catch {
+      setError("Unable to close payroll period.");
+    }
+  };
+
   const periodColumns: ColumnsType<PayrollPeriod> = [
-    { title: "Start", dataIndex: "startDate", width: 170 },
-    { title: "End", dataIndex: "endDate", width: 170 },
+    {
+      title: "Period",
+      dataIndex: "id",
+      render: (value: string) => value.slice(0, 8)
+    },
     {
       title: "Status",
       dataIndex: "status",
@@ -91,8 +117,12 @@ export default function PayrollPage() {
           <Button size="small" onClick={() => void openRunsDrawer(row.id)}>
             Runs
           </Button>
-          <Button size="small">Execute</Button>
-          <Button size="small">Close</Button>
+          <Button size="small" onClick={() => void executePeriod(row.id)}>
+            Execute
+          </Button>
+          <Button size="small" onClick={() => void closePeriod(row.id)}>
+            Close
+          </Button>
         </Space>
       )
     }
@@ -138,14 +168,14 @@ export default function PayrollPage() {
       </Drawer>
 
       <FormDrawer open={openPeriod} title="Create payroll period" onClose={() => setOpenPeriod(false)}>
-        <Form layout="vertical">
-          <Form.Item label="Tu ngay" htmlFor="payroll-start">
+        <Form form={form} layout="vertical" onFinish={createPeriod}>
+          <Form.Item label="Tu ngay" name="fromDate" htmlFor="payroll-start" rules={[{ required: true, message: "Chon ngay bat dau" }]}>
             <Input id="payroll-start" type="date" />
           </Form.Item>
-          <Form.Item label="Den ngay" htmlFor="payroll-end">
+          <Form.Item label="Den ngay" name="toDate" htmlFor="payroll-end" rules={[{ required: true, message: "Chon ngay ket thuc" }]}>
             <Input id="payroll-end" type="date" />
           </Form.Item>
-          <Button type="primary" onClick={() => setOpenPeriod(false)}>
+          <Button type="primary" htmlType="submit" loading={saving}>
             Tao ky
           </Button>
         </Form>

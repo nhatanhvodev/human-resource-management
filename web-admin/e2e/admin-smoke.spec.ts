@@ -13,7 +13,13 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/v1/departments**", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ items: [], page: 0, size: 10, totalItems: 0, totalPages: 0 })
+      body: JSON.stringify({
+        items: [{ id: "11111111-1111-1111-1111-111111111111", code: "ENG-E2E", name: "Engineering E2E" }],
+        page: 0,
+        size: 10,
+        totalItems: 1,
+        totalPages: 1
+      })
     });
   });
   await page.route("**/api/v1/employees**", async (route) => {
@@ -46,6 +52,9 @@ test("admin happy path", async ({ page }) => {
   await page.getByRole("button", { name: "Them nhan vien" }).click();
   await page.getByLabel("Ma nhan vien").fill("E2E-001");
   await page.getByLabel("Ho va ten").fill("Test Employee");
+  await page.getByLabel("Phong ban").click();
+  await page.getByText("ENG-E2E - Engineering E2E").click();
+  await page.getByLabel("Ngay vao lam").fill("2026-05-30");
   await page.getByRole("button", { name: "Luu nhan vien" }).click();
 
   await page.goto("/payroll");

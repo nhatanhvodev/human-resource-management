@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, Space } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -28,39 +28,47 @@ export default function DepartmentsPage() {
   const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResponse<Department>>(emptyPage);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [form] = Form.useForm<{ code: string; name: string }>();
+
+  const loadDepartments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get<PageResponse<Department>>("/departments", {
+        params: { page, size: 10, q: keyword || undefined }
+      });
+      setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
+    } catch {
+      setError("Unable to load departments. Check token, tenant, and backend connectivity.");
+    } finally {
+      setLoading(false);
+    }
+  }, [keyword, page]);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadDepartments() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await apiClient.get<PageResponse<Department>>("/departments", {
-          params: { page, size: 10, q: keyword || undefined }
-        });
-        if (mounted) {
-          setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
-        }
-      } catch {
-        if (mounted) {
-          setError("Unable to load departments. Check token, tenant, and backend connectivity.");
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
     void loadDepartments();
+  }, [loadDepartments]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [keyword, page]);
+  const createDepartment = async (values: { code: string; name: string }) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiClient.post("/departments", {
+        code: values.code.trim(),
+        name: values.name.trim()
+      });
+      form.resetFields();
+      setOpenCreate(false);
+      await loadDepartments();
+    } catch {
+      setError("Unable to create department. Check required fields or duplicate department code.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const columns = useMemo<ColumnsType<Department>>(
     () => [
@@ -123,14 +131,16 @@ export default function DepartmentsPage() {
       />
 
       <FormDrawer open={openCreate} title="Them phong ban" onClose={() => setOpenCreate(false)}>
-        <Form layout="vertical">
-          <Form.Item label="Ma phong ban" htmlFor="department-code">
+        <Form form={form} layout="vertical" onFinish={createDepartment}>
+          <Form.Item label="Ma phong ban" name="code" htmlFor="department-code" rules={[{ required: true, message: "Nhap ma phong ban" }]}>
             <Input id="department-code" />
           </Form.Item>
-          <Form.Item label="Ten phong ban" htmlFor="department-name">
+          <Form.Item label="Ten phong ban" name="name" htmlFor="department-name" rules={[{ required: true, message: "Nhap ten phong ban" }]}>
             <Input id="department-name" />
           </Form.Item>
-          <Button type="primary">Tao moi</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>
+            Tao moi
+          </Button>
         </Form>
       </FormDrawer>
     </>
