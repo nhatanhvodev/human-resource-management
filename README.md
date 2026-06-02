@@ -20,7 +20,7 @@ docker compose -f docker/compose.yml up -d
 
 ```powershell
 docker compose -f docker/compose.yml up -d
-.tools/apache-maven-3.9.11/bin/mvn.cmd spring-boot:run
+.tools/apache-maven-3.9.11/bin/mvn.cmd spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 ## Run frontend
