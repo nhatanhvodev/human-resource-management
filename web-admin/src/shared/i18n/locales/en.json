@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "departments": "Departments",
+    "employees": "Employees",
+    "recruitment": "Recruitment",
+    "leave": "Leave",
+    "payroll": "Payroll",
+    "performance": "Performance",
+    "attendance": "Attendance",
+    "documents": "Documents",
+    "onboarding": "Onboarding",
+    "training": "Training",
+    "assets": "Assets",
+    "announcements": "Announcements",
+    "audit": "Audit Log",
+    "settings": "Settings"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "export": "Export",
+    "actions": "Actions",
+    "status": "Status",
+    "detail": "Detail"
+  }
+}

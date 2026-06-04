@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "dashboard": "Tổng quan",
+    "departments": "Phòng ban",
+    "employees": "Nhân viên",
+    "recruitment": "Tuyển dụng",
+    "leave": "Nghỉ phép",
+    "payroll": "Bảng lương",
+    "performance": "Đánh giá",
+    "attendance": "Chấm công",
+    "documents": "Tài liệu",
+    "onboarding": "Onboarding",
+    "training": "Đào tạo",
+    "assets": "Tài sản",
+    "announcements": "Thông báo",
+    "audit": "Nhật ký hệ thống",
+    "settings": "Thiết lập"
+  },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "create": "Tạo mới",
+    "search": "Tìm kiếm",
+    "export": "Xuất báo cáo",
+    "actions": "Thao tác",
+    "status": "Trạng thái",
+    "detail": "Chi tiết"
+  }
+}
