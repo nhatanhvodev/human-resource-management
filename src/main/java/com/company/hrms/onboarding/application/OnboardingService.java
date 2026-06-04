@@ -2,7 +2,7 @@ package com.company.hrms.onboarding.application;
 
 import com.company.hrms.onboarding.domain.*;
 import com.company.hrms.onboarding.infrastructure.*;
-import com.company.hrms.shared.domain.NotFoundException;
+import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

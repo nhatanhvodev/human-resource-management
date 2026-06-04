@@ -15,7 +15,10 @@ export default defineConfig({
           { src: "/icon-192.png", sizes: "192x192", type: "image/png" }
         ]
       },
-      workbox: { globPatterns: ["**/*.{js,css,html,ico,png,svg}"] }
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
+      }
     })
   ],
   server: {

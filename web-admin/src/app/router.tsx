@@ -13,6 +13,13 @@ import PayrollPage from "../features/payroll/PayrollPage";
 import PerformancePage from "../features/performance/PerformancePage";
 import RecruitmentPage from "../features/recruitment/RecruitmentPage";
 import DevSettingsPage from "../features/settings/DevSettingsPage";
+import AttendancePage from "../features/attendance/AttendancePage";
+import DocumentsPage from "../features/documents/DocumentsPage";
+import OnboardingPage from "../features/onboarding/OnboardingPage";
+import TrainingPage from "../features/training/TrainingPage";
+import AssetsPage from "../features/assets/AssetsPage";
+import AnnouncementsPage from "../features/announcements/AnnouncementsPage";
+import AuditLogPage from "../features/audit/AuditLogPage";
 
 const EssDashboardPage = lazy(() => import("../features/ess/EssDashboardPage"));
 const MyProfilePage = lazy(() => import("../features/ess/MyProfilePage"));
@@ -27,9 +34,6 @@ const Lazy = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={<Spin style={{ display: 'block', margin: '40px auto' }} />}>{children}</Suspense>
 );
 
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div style={{ padding: 24 }}><h2>{title}</h2><p>Coming soon</p></div>
-);
 
 export const router = createBrowserRouter([
   {
@@ -45,13 +49,13 @@ export const router = createBrowserRouter([
       { path: "leave", element: <LeavePage /> },
       { path: "payroll", element: <PayrollPage /> },
       { path: "performance", element: <PerformancePage /> },
-      { path: "attendance", element: <PlaceholderPage title="Chấm công" /> },
-      { path: "documents", element: <PlaceholderPage title="Tài liệu" /> },
-      { path: "onboarding", element: <PlaceholderPage title="Onboarding" /> },
-      { path: "training", element: <PlaceholderPage title="Đào tạo" /> },
-      { path: "assets", element: <PlaceholderPage title="Tài sản" /> },
-      { path: "announcements", element: <PlaceholderPage title="Thông báo" /> },
-      { path: "audit", element: <PlaceholderPage title="Nhật ký hệ thống" /> },
+      { path: "attendance", element: <AttendancePage /> },
+      { path: "documents", element: <DocumentsPage /> },
+      { path: "onboarding", element: <OnboardingPage /> },
+      { path: "training", element: <TrainingPage /> },
+      { path: "assets", element: <AssetsPage /> },
+      { path: "announcements", element: <AnnouncementsPage /> },
+      { path: "audit", element: <AuditLogPage /> },
       { path: "settings", element: <DevSettingsPage /> }
     ]
   },

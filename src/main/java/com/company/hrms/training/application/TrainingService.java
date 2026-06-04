@@ -1,6 +1,6 @@
 package com.company.hrms.training.application;
 
-import com.company.hrms.shared.domain.NotFoundException;
+import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
 import com.company.hrms.training.domain.*;
 import com.company.hrms.training.infrastructure.*;

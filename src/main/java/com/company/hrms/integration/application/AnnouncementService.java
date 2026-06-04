@@ -3,7 +3,7 @@ package com.company.hrms.integration.application;
 import com.company.hrms.integration.domain.Announcement;
 import com.company.hrms.integration.domain.AnnouncementPriority;
 import com.company.hrms.integration.infrastructure.AnnouncementRepository;
-import com.company.hrms.shared.domain.NotFoundException;
+import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

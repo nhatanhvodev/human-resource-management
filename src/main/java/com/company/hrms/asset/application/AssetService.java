@@ -3,7 +3,7 @@ package com.company.hrms.asset.application;
 import com.company.hrms.asset.domain.Asset;
 import com.company.hrms.asset.domain.AssetStatus;
 import com.company.hrms.asset.infrastructure.AssetRepository;
-import com.company.hrms.shared.domain.NotFoundException;
+import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
