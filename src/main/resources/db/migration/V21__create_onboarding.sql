@@ -1,0 +1,31 @@
+CREATE TABLE onboarding_template (
+    id UUID PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE onboarding_template_task (
+    id UUID PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    template_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description VARCHAR(1000),
+    order_index INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE onboarding_task (
+    id UUID PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    employee_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description VARCHAR(1000),
+    status VARCHAR(20) NOT NULL DEFAULT 'TODO',
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

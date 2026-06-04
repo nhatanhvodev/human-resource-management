@@ -1,0 +1,14 @@
+CREATE TABLE document (
+    id UUID PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    employee_id UUID NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    file_type VARCHAR(100),
+    file_size BIGINT NOT NULL DEFAULT 0,
+    storage_path VARCHAR(500) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

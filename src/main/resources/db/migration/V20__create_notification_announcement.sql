@@ -1,0 +1,24 @@
+CREATE TABLE notification (
+    id UUID PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    recipient_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    body VARCHAR(1000),
+    type VARCHAR(50) NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE announcement (
+    id UUID PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    author_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    publish_at TIMESTAMP,
+    expire_at TIMESTAMP,
+    priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
