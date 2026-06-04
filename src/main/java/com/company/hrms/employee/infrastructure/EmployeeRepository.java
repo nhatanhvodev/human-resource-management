@@ -11,19 +11,18 @@ import java.util.UUID;
 
 public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     long countByTenantId(String tenantId);
-
-    boolean existsByTenantIdAndEmployeeNo(String tenantId, String employeeNo);
+    long countByTenantIdAndEmploymentStatus(String tenantId, EmploymentStatus status);
+    long countByTenantIdAndDepartment_Id(String tenantId, UUID departmentId);
 
     Optional<Employee> findByIdAndTenantId(UUID id, String tenantId);
 
     Page<Employee> findAllByTenantId(String tenantId, Pageable pageable);
 
+    boolean existsByTenantIdAndEmployeeNo(String tenantId, String employeeNo);
+
     Page<Employee> findByTenantIdAndEmploymentStatus(String tenantId, EmploymentStatus status, Pageable pageable);
 
     Page<Employee> findByTenantIdAndFullNameContainingIgnoreCase(String tenantId, String name, Pageable pageable);
 
-    Page<Employee> findByTenantIdAndEmploymentStatusAndFullNameContainingIgnoreCase(
-        String tenantId, EmploymentStatus status, String name, Pageable pageable);
-
-    boolean existsByTenantIdAndDepartment_Id(String tenantId, UUID departmentId);
+    Page<Employee> findByTenantIdAndEmploymentStatusAndFullNameContainingIgnoreCase(String tenantId, EmploymentStatus status, String name, Pageable pageable);
 }

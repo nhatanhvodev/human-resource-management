@@ -2,6 +2,7 @@ package com.company.hrms.reporting.application;
 
 import com.company.hrms.attendance.domain.LeaveStatus;
 import com.company.hrms.attendance.infrastructure.LeaveRequestRepository;
+import com.company.hrms.employee.domain.EmploymentStatus;
 import com.company.hrms.employee.infrastructure.EmployeeRepository;
 import com.company.hrms.integration.infrastructure.OutboxEventRepository;
 import com.company.hrms.organization.infrastructure.DepartmentRepository;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class DashboardQueryService {
@@ -38,10 +40,22 @@ public class DashboardQueryService {
     public Summary summary() {
         String tenantId = TenantContext.get();
         long employeeCount = employeeRepository.countByTenantId(tenantId);
+        long activeEmployeeCount = employeeRepository.countByTenantIdAndEmploymentStatus(tenantId, EmploymentStatus.ACTIVE);
         long departmentCount = departmentRepository.countByTenantId(tenantId);
         long openPeriodCount = payrollPeriodRepository.countByTenantIdAndStatus(tenantId, PayrollPeriodStatus.OPEN);
         long pendingLeaveCount = leaveRequestRepository.countByTenantIdAndStatus(tenantId, LeaveStatus.PENDING);
-        return new Summary(employeeCount, departmentCount, openPeriodCount, pendingLeaveCount);
+        return new Summary(employeeCount, activeEmployeeCount, departmentCount, openPeriodCount, pendingLeaveCount);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DepartmentHeadcount> headcountByDepartment() {
+        String tenantId = TenantContext.get();
+        return departmentRepository.findAllByTenantId(tenantId).stream()
+            .map(dept -> {
+                long count = employeeRepository.countByTenantIdAndDepartment_Id(tenantId, dept.getId());
+                return new DepartmentHeadcount(dept.getId(), dept.getName(), count);
+            })
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -52,9 +66,10 @@ public class DashboardQueryService {
             .toList();
     }
 
-    public record Summary(long employees, long departments, long openPayrollPeriods, long pendingLeaves) {
-    }
+    public record Summary(long totalEmployees, long activeEmployees, long departments,
+                          long openPayrollPeriods, long pendingLeaves) {}
 
-    public record Activity(String type, String message, Instant timestamp) {
-    }
+    public record DepartmentHeadcount(UUID departmentId, String departmentName, long count) {}
+
+    public record Activity(String type, String message, Instant timestamp) {}
 }

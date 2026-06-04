@@ -28,4 +28,10 @@ public class DashboardController {
     public List<DashboardQueryService.Activity> activities() {
         return dashboardQueryService.activities();
     }
+
+    @GetMapping("/headcount-by-department")
+    @PreAuthorize("hasAuthority('dashboard:read')")
+    public List<DashboardQueryService.DepartmentHeadcount> headcountByDepartment() {
+        return dashboardQueryService.headcountByDepartment();
+    }
 }
