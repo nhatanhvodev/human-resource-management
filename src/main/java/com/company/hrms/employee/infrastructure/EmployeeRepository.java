@@ -20,6 +20,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     boolean existsByTenantIdAndEmployeeNo(String tenantId, String employeeNo);
 
+    boolean existsByTenantIdAndDepartment_Id(String tenantId, UUID departmentId);
+
     Page<Employee> findByTenantIdAndEmploymentStatus(String tenantId, EmploymentStatus status, Pageable pageable);
 
     Page<Employee> findByTenantIdAndFullNameContainingIgnoreCase(String tenantId, String name, Pageable pageable);
