@@ -55,7 +55,11 @@ public class SecurityConfig {
                 "recruitment:read",
                 "recruitment:create",
                 "recruitment:update",
-                "recruitment:convert"))
+                "recruitment:convert",
+                "performance:read",
+                "performance:create",
+                "performance:update",
+                "self:access"))
             .subject("local-user")
             .issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(3600))
