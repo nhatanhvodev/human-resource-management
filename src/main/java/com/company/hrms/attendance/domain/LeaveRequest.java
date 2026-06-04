@@ -30,46 +30,44 @@ public class LeaveRequest extends AuditableEntity {
     private LocalDate toDate;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "leave_type", nullable = false, length = 20)
+    private LeaveType leaveType;
+
+    @Column(name = "reason")
+    private String reason;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private LeaveStatus status;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
 
     protected LeaveRequest() {
     }
 
-    public LeaveRequest(UUID id, String tenantId, UUID employeeId, LocalDate fromDate, LocalDate toDate, LeaveStatus status) {
+    public LeaveRequest(UUID id, String tenantId, UUID employeeId, LocalDate fromDate, LocalDate toDate,
+                        LeaveType leaveType, String reason, LeaveStatus status) {
         this.id = id;
         this.tenantId = tenantId;
         this.employeeId = employeeId;
         this.fromDate = fromDate;
         this.toDate = toDate;
+        this.leaveType = leaveType;
+        this.reason = reason;
         this.status = status;
     }
 
-    public UUID getId() {
-        return id;
-    }
+    public UUID getId() { return id; }
+    public UUID getEmployeeId() { return employeeId; }
+    public LocalDate getFromDate() { return fromDate; }
+    public LocalDate getToDate() { return toDate; }
+    public LeaveType getLeaveType() { return leaveType; }
+    public String getReason() { return reason; }
+    public LeaveStatus getStatus() { return status; }
+    public UUID getApprovedBy() { return approvedBy; }
 
-    public UUID getEmployeeId() {
-        return employeeId;
-    }
-
-    public LocalDate getFromDate() {
-        return fromDate;
-    }
-
-    public LocalDate getToDate() {
-        return toDate;
-    }
-
-    public LeaveStatus getStatus() {
-        return status;
-    }
-
-    public void approve() {
-        this.status = LeaveStatus.APPROVED;
-    }
-
-    public void reject() {
-        this.status = LeaveStatus.REJECTED;
-    }
+    public void approve() { this.status = LeaveStatus.APPROVED; }
+    public void reject() { this.status = LeaveStatus.REJECTED; }
+    public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
 }
