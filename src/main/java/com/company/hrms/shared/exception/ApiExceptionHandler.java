@@ -41,4 +41,22 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest()
             .body(new ApiError("VALIDATION_ERROR", ex.getMessage(), Instant.now(), Map.of()));
     }
+
+    @ExceptionHandler(BadRequestException.class)
+    ResponseEntity<ApiError> handleBadRequest(BadRequestException ex) {
+        return ResponseEntity.badRequest()
+            .body(new ApiError("BAD_REQUEST", ex.getMessage(), Instant.now(), Map.of()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    ResponseEntity<ApiError> handleForbidden(ForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(new ApiError("FORBIDDEN", ex.getMessage(), Instant.now(), Map.of()));
+    }
+
+    @ExceptionHandler(PayrollLockedException.class)
+    ResponseEntity<ApiError> handlePayrollLocked(PayrollLockedException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(new ApiError("PAYROLL_LOCKED", ex.getMessage(), Instant.now(), Map.of()));
+    }
 }
