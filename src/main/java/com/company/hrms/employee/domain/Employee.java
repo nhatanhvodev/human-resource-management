@@ -34,6 +34,10 @@ public class Employee extends AuditableEntity {
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "position_id")
+    private Position position;
+
     @Column(name = "hire_date", nullable = false)
     private LocalDate hireDate;
 
@@ -41,16 +45,36 @@ public class Employee extends AuditableEntity {
     @Column(name = "employment_status", nullable = false, length = 30)
     private EmploymentStatus employmentStatus;
 
+    @Column(name = "email", length = 255)
+    private String email;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", length = 10)
+    private Gender gender;
+
+    @Column(name = "national_id", length = 20)
+    private String nationalId;
+
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "bank_account", length = 30)
+    private String bankAccount;
+
+    @Column(name = "tax_code", length = 20)
+    private String taxCode;
+
     protected Employee() {
     }
 
-    public Employee(UUID id,
-                    String tenantId,
-                    String employeeNo,
-                    String fullName,
-                    Department department,
-                    LocalDate hireDate,
-                    EmploymentStatus employmentStatus) {
+    public Employee(UUID id, String tenantId, String employeeNo, String fullName,
+                    Department department, LocalDate hireDate, EmploymentStatus employmentStatus) {
         this.id = id;
         this.tenantId = tenantId;
         this.employeeNo = employeeNo;
@@ -60,38 +84,41 @@ public class Employee extends AuditableEntity {
         this.employmentStatus = employmentStatus;
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public String getTenantId() {
-        return tenantId;
-    }
-
-    public String getEmployeeNo() {
-        return employeeNo;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public Department getDepartment() {
-        return department;
-    }
-
-    public LocalDate getHireDate() {
-        return hireDate;
-    }
-
-    public EmploymentStatus getEmploymentStatus() {
-        return employmentStatus;
-    }
+    public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
+    public String getEmployeeNo() { return employeeNo; }
+    public String getFullName() { return fullName; }
+    public Department getDepartment() { return department; }
+    public Position getPosition() { return position; }
+    public LocalDate getHireDate() { return hireDate; }
+    public EmploymentStatus getEmploymentStatus() { return employmentStatus; }
+    public String getEmail() { return email; }
+    public String getPhone() { return phone; }
+    public LocalDate getDateOfBirth() { return dateOfBirth; }
+    public Gender getGender() { return gender; }
+    public String getNationalId() { return nationalId; }
+    public String getAddress() { return address; }
+    public String getBankAccount() { return bankAccount; }
+    public String getTaxCode() { return taxCode; }
 
     public void updateProfile(String fullName, Department department, LocalDate hireDate) {
         this.fullName = fullName;
         this.department = department;
         this.hireDate = hireDate;
+    }
+
+    public void updateExtendedProfile(String email, String phone, Position position, LocalDate dateOfBirth,
+                                       Gender gender, String nationalId, String address,
+                                       String bankAccount, String taxCode) {
+        this.email = email;
+        this.phone = phone;
+        this.position = position;
+        this.dateOfBirth = dateOfBirth;
+        this.gender = gender;
+        this.nationalId = nationalId;
+        this.address = address;
+        this.bankAccount = bankAccount;
+        this.taxCode = taxCode;
     }
 
     public void changeStatus(EmploymentStatus status) {
