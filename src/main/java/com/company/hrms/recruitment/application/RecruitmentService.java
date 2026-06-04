@@ -4,9 +4,12 @@ import com.company.hrms.employee.application.EmployeeService;
 import com.company.hrms.employee.domain.Employee;
 import com.company.hrms.recruitment.domain.ApplicationStatus;
 import com.company.hrms.recruitment.domain.Candidate;
+import com.company.hrms.recruitment.domain.Interview;
+import com.company.hrms.recruitment.domain.InterviewStatus;
 import com.company.hrms.recruitment.domain.JobPosting;
 import com.company.hrms.recruitment.domain.RecruitmentApplication;
 import com.company.hrms.recruitment.infrastructure.CandidateRepository;
+import com.company.hrms.recruitment.infrastructure.InterviewRepository;
 import com.company.hrms.recruitment.infrastructure.JobPostingRepository;
 import com.company.hrms.recruitment.infrastructure.RecruitmentApplicationRepository;
 import com.company.hrms.shared.exception.ConflictException;
@@ -17,7 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -26,15 +31,18 @@ public class RecruitmentService {
     private final CandidateRepository candidateRepository;
     private final JobPostingRepository jobPostingRepository;
     private final RecruitmentApplicationRepository recruitmentApplicationRepository;
+    private final InterviewRepository interviewRepository;
     private final EmployeeService employeeService;
 
     public RecruitmentService(CandidateRepository candidateRepository,
                               JobPostingRepository jobPostingRepository,
                               RecruitmentApplicationRepository recruitmentApplicationRepository,
+                              InterviewRepository interviewRepository,
                               EmployeeService employeeService) {
         this.candidateRepository = candidateRepository;
         this.jobPostingRepository = jobPostingRepository;
         this.recruitmentApplicationRepository = recruitmentApplicationRepository;
+        this.interviewRepository = interviewRepository;
         this.employeeService = employeeService;
     }
 
@@ -126,6 +134,34 @@ public class RecruitmentService {
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("INVALID_APPLICATION_STATUS");
         }
+    }
+
+    @Transactional
+    public RecruitmentApplication moveStage(UUID id, String stage) {
+        RecruitmentApplication application = recruitmentApplicationRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("APPLICATION_NOT_FOUND"));
+        application.setStatus(ApplicationStatus.valueOf(stage.toUpperCase(Locale.ROOT)));
+        return recruitmentApplicationRepository.save(application);
+    }
+
+    @Transactional
+    public Interview scheduleInterview(UUID applicationId, UUID interviewerId, Instant scheduledAt,
+                                       String location, String meetingLink) {
+        return interviewRepository.save(new Interview(UUID.randomUUID(), TenantContext.get(),
+            applicationId, interviewerId, scheduledAt, location, meetingLink));
+    }
+
+    @Transactional
+    public Interview addFeedback(UUID id, String feedback, Integer rating) {
+        Interview interview = interviewRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("INTERVIEW_NOT_FOUND"));
+        interview.addFeedback(feedback, rating);
+        return interviewRepository.save(interview);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Interview> listInterviews(UUID applicationId) {
+        return interviewRepository.findByTenantIdAndApplicationId(TenantContext.get(), applicationId);
     }
 
     public record ConversionResult(UUID employeeId, UUID applicationId, String applicationStatus) {

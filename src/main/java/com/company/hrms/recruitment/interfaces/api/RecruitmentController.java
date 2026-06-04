@@ -3,6 +3,7 @@ package com.company.hrms.recruitment.interfaces.api;
 import com.company.hrms.recruitment.application.RecruitmentService;
 import com.company.hrms.recruitment.domain.ApplicationStatus;
 import com.company.hrms.recruitment.domain.Candidate;
+import com.company.hrms.recruitment.domain.Interview;
 import com.company.hrms.recruitment.domain.JobPosting;
 import com.company.hrms.recruitment.domain.RecruitmentApplication;
 import com.company.hrms.shared.interfaces.api.PageResponse;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -135,4 +138,46 @@ public class RecruitmentController {
 
     public record ConversionResponse(UUID employeeId, UUID applicationId, String applicationStatus) {
     }
+
+    @PostMapping("/applications/{id}/move-stage")
+    @PreAuthorize("hasAuthority('recruitment:update')")
+    public ApplicationResponse moveStage(@PathVariable UUID id, @RequestParam String stage) {
+        RecruitmentApplication application = recruitmentService.moveStage(id, stage);
+        return new ApplicationResponse(application.getId(), application.getStatus().name());
+    }
+
+    @PostMapping("/interviews")
+    @PreAuthorize("hasAuthority('recruitment:create')")
+    public InterviewResponse scheduleInterview(@Valid @RequestBody ScheduleInterviewRequest request) {
+        Interview interview = recruitmentService.scheduleInterview(
+            request.applicationId(), request.interviewerId(), request.scheduledAt(),
+            request.location(), request.meetingLink());
+        return toInterviewResponse(interview);
+    }
+
+    @PutMapping("/interviews/{id}/feedback")
+    @PreAuthorize("hasAuthority('recruitment:update')")
+    public InterviewResponse addFeedback(@PathVariable UUID id, @Valid @RequestBody FeedbackRequest request) {
+        return toInterviewResponse(recruitmentService.addFeedback(id, request.feedback(), request.rating()));
+    }
+
+    @GetMapping("/interviews")
+    @PreAuthorize("hasAuthority('recruitment:read')")
+    public List<InterviewResponse> listInterviews(@RequestParam UUID applicationId) {
+        return recruitmentService.listInterviews(applicationId).stream()
+            .map(this::toInterviewResponse).toList();
+    }
+
+    private InterviewResponse toInterviewResponse(Interview i) {
+        return new InterviewResponse(i.getId(), i.getApplicationId(), i.getInterviewerId(),
+            i.getScheduledAt(), i.getLocation(), i.getMeetingLink(), i.getFeedback(),
+            i.getRating(), i.getStatus().name());
+    }
+
+    public record ScheduleInterviewRequest(@NotNull UUID applicationId, UUID interviewerId,
+                                           Instant scheduledAt, String location, String meetingLink) {}
+    public record FeedbackRequest(String feedback, Integer rating) {}
+    public record InterviewResponse(UUID id, UUID applicationId, UUID interviewerId,
+                                    Instant scheduledAt, String location, String meetingLink,
+                                    String feedback, Integer rating, String status) {}
 }
