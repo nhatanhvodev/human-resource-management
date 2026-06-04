@@ -428,4 +428,5 @@ export default function RecruitmentPage() {
         <InterviewFeedback interviewId={feedbackInterviewId} open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} onSaved={() => { setFeedbackInterviewId(null); void loadInterviews(); }} />
       </Drawer>
     </>
+  );
 }
