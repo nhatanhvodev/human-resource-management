@@ -1,6 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Segmented, Select, Space } from "antd";
+import { Alert, Button, Descriptions, Drawer, Form, Input, Segmented, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import type { TablePaginationConfig } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiClient } from "../../shared/api/client";
@@ -17,12 +18,50 @@ type Employee = {
   departmentId: string;
   employmentStatus: string;
   hireDate: string;
+  email?: string;
+  phone?: string;
+  positionId?: string;
+  positionTitle?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  nationalId?: string;
+  address?: string;
+  bankAccount?: string;
+  taxCode?: string;
 };
 
 type Department = {
   id: string;
   code: string;
   name: string;
+};
+
+type Position = {
+  id: string;
+  code: string;
+  title: string;
+  departmentId: string;
+};
+
+type EmployeeContract = {
+  id: string;
+  contractType: string;
+  startDate: string;
+  endDate?: string;
+  salary: number;
+};
+
+type EmployeeSkill = {
+  id: string;
+  skillName: string;
+  proficiencyLevel: string;
+};
+
+type EmergencyContact = {
+  id: string;
+  fullName: string;
+  relationship: string;
+  phone: string;
 };
 
 const emptyPage: PageResponse<Employee> = {
@@ -35,28 +74,50 @@ const emptyPage: PageResponse<Employee> = {
 
 export default function EmployeesPage() {
   const [status, setStatus] = useState<string>("ALL");
+  const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResponse<Employee>>(emptyPage);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
-  const [form] = Form.useForm<{ employeeNo: string; fullName: string; departmentId: string; hireDate: string }>();
+  const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [detailContracts, setDetailContracts] = useState<EmployeeContract[]>([]);
+  const [detailSkills, setDetailSkills] = useState<EmployeeSkill[]>([]);
+  const [detailEmergencyContacts, setDetailEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [form] = Form.useForm<{
+    employeeNo: string;
+    fullName: string;
+    departmentId: string;
+    hireDate: string;
+    email?: string;
+    phone?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    nationalId?: string;
+    address?: string;
+    bankAccount?: string;
+    taxCode?: string;
+    positionId?: string;
+  }>();
 
   const loadEmployees = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await apiClient.get<PageResponse<Employee>>("/employees", {
-        params: { page: 0, size: 10, status: status === "ALL" ? undefined : status }
+        params: { page, size: 10, status: status === "ALL" ? undefined : status }
       });
       setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
     } catch {
-      setError("Unable to load employees. Check token, tenant, and backend connectivity.");
+      setError("Không tải được danh sách nhân viên. Kiểm tra token, tenant và kết nối backend.");
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, [page, status]);
 
   const loadDepartments = useCallback(async () => {
     try {
@@ -69,6 +130,37 @@ export default function EmployeesPage() {
     }
   }, []);
 
+  const loadPositions = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PageResponse<Position>>("/positions", {
+        params: { page: 0, size: 500 }
+      });
+      setPositions(response.data.items ?? []);
+    } catch {
+      setPositions([]);
+    }
+  }, []);
+
+  const loadEmployeeDetail = useCallback(async (id: string) => {
+    setDetailLoading(true);
+    try {
+      const [contractsRes, skillsRes, contactsRes] = await Promise.allSettled([
+        apiClient.get<PageResponse<EmployeeContract>>(`/employees/${id}/contracts`, { params: { page: 0, size: 50 } }),
+        apiClient.get<PageResponse<EmployeeSkill>>(`/employees/${id}/skills`, { params: { page: 0, size: 50 } }),
+        apiClient.get<PageResponse<EmergencyContact>>(`/employees/${id}/emergency-contacts`, { params: { page: 0, size: 50 } })
+      ]);
+      setDetailContracts(contractsRes.status === "fulfilled" ? (contractsRes.value.data.items ?? []) : []);
+      setDetailSkills(skillsRes.status === "fulfilled" ? (skillsRes.value.data.items ?? []) : []);
+      setDetailEmergencyContacts(contactsRes.status === "fulfilled" ? (contactsRes.value.data.items ?? []) : []);
+    } catch {
+      setDetailContracts([]);
+      setDetailSkills([]);
+      setDetailEmergencyContacts([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadEmployees();
   }, [loadEmployees]);
@@ -77,23 +169,110 @@ export default function EmployeesPage() {
     void loadDepartments();
   }, [loadDepartments]);
 
+  useEffect(() => {
+    void loadPositions();
+  }, [loadPositions]);
+
+  useEffect(() => {
+    if (detailEmployee) {
+      void loadEmployeeDetail(detailEmployee.id);
+    } else {
+      setDetailContracts([]);
+      setDetailSkills([]);
+      setDetailEmergencyContacts([]);
+    }
+  }, [detailEmployee, loadEmployeeDetail]);
+
   const departmentById = useMemo(() => new Map(departments.map((department) => [department.id, department])), [departments]);
 
-  const createEmployee = async (values: { employeeNo: string; fullName: string; departmentId: string; hireDate: string }) => {
+  const submitEmployee = async (values: {
+    employeeNo: string;
+    fullName: string;
+    departmentId: string;
+    hireDate: string;
+    email?: string;
+    phone?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    nationalId?: string;
+    address?: string;
+    bankAccount?: string;
+    taxCode?: string;
+    positionId?: string;
+  }) => {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post("/employees", {
-        employeeNo: values.employeeNo.trim(),
+      const payload = {
+        employeeNo: values.employeeNo?.trim(),
         fullName: values.fullName.trim(),
         departmentId: values.departmentId,
-        hireDate: values.hireDate
-      });
+        hireDate: values.hireDate,
+        email: values.email?.trim() || undefined,
+        phone: values.phone?.trim() || undefined,
+        dateOfBirth: values.dateOfBirth || undefined,
+        gender: values.gender || undefined,
+        nationalId: values.nationalId?.trim() || undefined,
+        address: values.address?.trim() || undefined,
+        bankAccount: values.bankAccount?.trim() || undefined,
+        taxCode: values.taxCode?.trim() || undefined,
+        positionId: values.positionId || undefined
+      };
+      if (editingEmployee) {
+        await apiClient.put(`/employees/${editingEmployee.id}`, payload);
+      } else {
+        await apiClient.post("/employees", payload);
+      }
       form.resetFields();
       setOpenCreate(false);
+      setEditingEmployee(null);
       await loadEmployees();
     } catch {
-      setError("Unable to create employee. Check required fields, employee code, and department.");
+      setError(
+        editingEmployee
+          ? "Không cập nhật được nhân viên. Kiểm tra họ tên, phòng ban và ngày vào làm."
+          : "Không tạo được nhân viên. Kiểm tra mã nhân viên, phòng ban và dữ liệu bắt buộc."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEdit = (employee: Employee) => {
+    setEditingEmployee(employee);
+    form.setFieldsValue({
+      employeeNo: employee.employeeNo,
+      fullName: employee.fullName,
+      departmentId: employee.departmentId,
+      hireDate: employee.hireDate,
+      email: employee.email,
+      phone: employee.phone,
+      dateOfBirth: employee.dateOfBirth,
+      gender: employee.gender,
+      nationalId: employee.nationalId,
+      address: employee.address,
+      bankAccount: employee.bankAccount,
+      taxCode: employee.taxCode,
+      positionId: employee.positionId
+    });
+    setOpenCreate(true);
+  };
+
+  const closeDrawer = () => {
+    form.resetFields();
+    setEditingEmployee(null);
+    setOpenCreate(false);
+  };
+
+  const changeEmployeeStatus = async (employee: Employee) => {
+    const nextStatus = employee.employmentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    setSaving(true);
+    setError(null);
+    try {
+      await apiClient.patch(`/employees/${employee.id}/status`, { employmentStatus: nextStatus });
+      await loadEmployees();
+    } catch {
+      setError("Không đổi được trạng thái nhân viên. Kiểm tra quyền cập nhật hoặc trạng thái hiện tại.");
     } finally {
       setSaving(false);
     }
@@ -101,10 +280,13 @@ export default function EmployeesPage() {
 
   const columns = useMemo<ColumnsType<Employee>>(
     () => [
-      { title: "Ma nhan vien", dataIndex: "employeeNo", width: 160 },
-      { title: "Ho va ten", dataIndex: "fullName" },
+      { title: "Mã nhân viên", dataIndex: "employeeNo", width: 160 },
+      { title: "Họ và tên", dataIndex: "fullName" },
+      { title: "Email", dataIndex: "email", width: 200, ellipsis: true },
+      { title: "Số điện thoại", dataIndex: "phone", width: 130 },
+      { title: "Vị trí", dataIndex: "positionTitle", width: 160 },
       {
-        title: "Phong ban",
+        title: "Phòng ban",
         dataIndex: "departmentId",
         width: 220,
         render: (value: string) => {
@@ -112,43 +294,84 @@ export default function EmployeesPage() {
           return department ? `${department.code} - ${department.name}` : value;
         }
       },
-      { title: "Ngay vao", dataIndex: "hireDate", width: 140 },
+      { title: "Ngày vào làm", dataIndex: "hireDate", width: 140 },
       {
-        title: "Trang thai",
+        title: "Trạng thái",
         dataIndex: "employmentStatus",
         width: 160,
         render: (value: string) => <StatusTag value={value} />
       },
       {
-        title: "Thao tac",
+        title: "Thao tác",
         key: "actions",
-        width: 160,
-        render: () => (
+        width: 300,
+        render: (_, row) => (
           <Space>
-            <Button size="small">Sua</Button>
-            <Button size="small">Chi tiet</Button>
+            <Button size="small" onClick={() => openEdit(row)}>
+              Sửa
+            </Button>
+            <Button size="small" onClick={() => setDetailEmployee(row)}>
+              Chi tiết
+            </Button>
+            <Button size="small" disabled={saving} onClick={() => void changeEmployeeStatus(row)}>
+              {row.employmentStatus === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+            </Button>
           </Space>
         )
       }
     ],
-    [departmentById]
+    [departmentById, saving]
   );
+
+  const pagination: TablePaginationConfig = {
+    current: data.page + 1,
+    pageSize: data.size,
+    total: data.totalItems,
+    onChange: (nextPage) => setPage(nextPage - 1)
+  };
+
+  const detailDepartment = detailEmployee ? departmentById.get(detailEmployee.departmentId) : undefined;
+
+  const contractColumns: ColumnsType<EmployeeContract> = [
+    { title: "Loại hợp đồng", dataIndex: "contractType" },
+    { title: "Ngày bắt đầu", dataIndex: "startDate" },
+    { title: "Ngày kết thúc", dataIndex: "endDate" },
+    { title: "Lương", dataIndex: "salary", render: (value: number) => value?.toLocaleString("vi-VN") }
+  ];
+
+  const skillColumns: ColumnsType<EmployeeSkill> = [
+    { title: "Kỹ năng", dataIndex: "skillName" },
+    { title: "Trình độ", dataIndex: "proficiencyLevel" }
+  ];
+
+  const emergencyContactColumns: ColumnsType<EmergencyContact> = [
+    { title: "Họ và tên", dataIndex: "fullName" },
+    { title: "Quan hệ", dataIndex: "relationship" },
+    { title: "Số điện thoại", dataIndex: "phone" }
+  ];
 
   return (
     <>
       <div className="page-header">
-        <h1>Employees</h1>
-        <p>Search employees, review departments, and manage employment status.</p>
+        <h1>Nhân viên</h1>
+        <p>Tìm kiếm, cập nhật hồ sơ và quản lý trạng thái làm việc của nhân viên.</p>
       </div>
 
       <PageToolbar>
         <Segmented
           value={status}
-          options={["ALL", "ACTIVE", "INACTIVE"]}
-          onChange={(value) => setStatus(String(value))}
+          options={[
+            { label: "Tất cả", value: "ALL" },
+            { label: "Đang làm việc", value: "ACTIVE" },
+            { label: "Ngừng hoạt động", value: "INACTIVE" }
+          ]}
+          onChange={(value) => {
+            setPage(0);
+            setStatus(String(value));
+          }}
         />
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
-          Them nhan vien
+          Thêm nhân viên
         </Button>
       </PageToolbar>
 
@@ -159,32 +382,151 @@ export default function EmployeesPage() {
         loading={loading}
         dataSource={data.items}
         columns={columns}
-        pagination={{ current: data.page + 1, pageSize: data.size, total: data.totalItems }}
+        pagination={pagination}
       />
 
-      <FormDrawer open={openCreate} title="Them nhan vien" onClose={() => setOpenCreate(false)}>
-        <Form form={form} layout="vertical" onFinish={createEmployee}>
-          <Form.Item label="Ma nhan vien" name="employeeNo" htmlFor="employee-code" rules={[{ required: true, message: "Nhap ma nhan vien" }]}>
-            <Input id="employee-code" />
+      <Drawer
+        title="Chi tiết nhân viên"
+        width="min(720px, calc(100vw - 32px))"
+        open={Boolean(detailEmployee)}
+        onClose={() => setDetailEmployee(null)}
+      >
+        {detailEmployee ? (
+          <Tabs
+            defaultActiveKey="profile"
+            items={[
+              {
+                key: "profile",
+                label: "Hồ sơ",
+                children: (
+                  <Descriptions bordered column={1} size="middle">
+                    <Descriptions.Item label="Mã nhân viên">{detailEmployee.employeeNo}</Descriptions.Item>
+                    <Descriptions.Item label="Họ và tên">{detailEmployee.fullName}</Descriptions.Item>
+                    <Descriptions.Item label="Phòng ban">
+                      {detailDepartment ? `${detailDepartment.code} - ${detailDepartment.name}` : detailEmployee.departmentId}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Ngày vào làm">{detailEmployee.hireDate}</Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái"><StatusTag value={detailEmployee.employmentStatus} /></Descriptions.Item>
+                    <Descriptions.Item label="Email">{detailEmployee.email ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Số điện thoại">{detailEmployee.phone ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Vị trí">{detailEmployee.positionTitle ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Ngày sinh">{detailEmployee.dateOfBirth ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Giới tính">
+                      {detailEmployee.gender === "MALE" ? "Nam" : detailEmployee.gender === "FEMALE" ? "Nữ" : detailEmployee.gender === "OTHER" ? "Khác" : "-"}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="CMND/CCCD">{detailEmployee.nationalId ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Địa chỉ">{detailEmployee.address ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Số tài khoản">{detailEmployee.bankAccount ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Mã số thuế">{detailEmployee.taxCode ?? "-"}</Descriptions.Item>
+                  </Descriptions>
+                )
+              },
+              {
+                key: "contracts",
+                label: "Hợp đồng",
+                children: (
+                  <AppTable<EmployeeContract>
+                    rowKey="id"
+                    loading={detailLoading}
+                    dataSource={detailContracts}
+                    columns={contractColumns}
+                    pagination={false}
+                  />
+                )
+              },
+              {
+                key: "skills",
+                label: "Kỹ năng",
+                children: (
+                  <AppTable<EmployeeSkill>
+                    rowKey="id"
+                    loading={detailLoading}
+                    dataSource={detailSkills}
+                    columns={skillColumns}
+                    pagination={false}
+                  />
+                )
+              },
+              {
+                key: "emergency",
+                label: "Liên hệ khẩn cấp",
+                children: (
+                  <AppTable<EmergencyContact>
+                    rowKey="id"
+                    loading={detailLoading}
+                    dataSource={detailEmergencyContacts}
+                    columns={emergencyContactColumns}
+                    pagination={false}
+                  />
+                )
+              }
+            ]}
+          />
+        ) : null}
+      </Drawer>
+
+      <FormDrawer open={openCreate} title={editingEmployee ? "Cập nhật nhân viên" : "Thêm nhân viên"} onClose={closeDrawer}>
+        <Form form={form} layout="vertical" onFinish={submitEmployee}>
+          <Form.Item label="Mã nhân viên" name="employeeNo" htmlFor="employee-code" rules={[{ required: !editingEmployee, message: "Nhập mã nhân viên" }]}>
+            <Input id="employee-code" disabled={Boolean(editingEmployee)} />
           </Form.Item>
-          <Form.Item label="Ho va ten" name="fullName" htmlFor="employee-name" rules={[{ required: true, message: "Nhap ho va ten" }]}>
+          <Form.Item label="Họ và tên" name="fullName" htmlFor="employee-name" rules={[{ required: true, message: "Nhập họ và tên" }]}>
             <Input id="employee-name" />
           </Form.Item>
-          <Form.Item label="Phong ban" name="departmentId" htmlFor="employee-department" rules={[{ required: true, message: "Chon phong ban" }]}>
+          <Form.Item label="Phòng ban" name="departmentId" htmlFor="employee-department" rules={[{ required: true, message: "Chọn phòng ban" }]}>
             <Select
               id="employee-department"
-              placeholder="Chon phong ban"
+              placeholder="Chọn phòng ban"
               options={departments.map((department) => ({
                 value: department.id,
                 label: `${department.code} - ${department.name}`
               }))}
             />
           </Form.Item>
-          <Form.Item label="Ngay vao lam" name="hireDate" htmlFor="employee-hire-date" rules={[{ required: true, message: "Chon ngay vao lam" }]}>
+          <Form.Item label="Ngày vào làm" name="hireDate" htmlFor="employee-hire-date" rules={[{ required: true, message: "Chọn ngày vào làm" }]}>
             <Input id="employee-hire-date" type="date" />
           </Form.Item>
+          <Form.Item label="Email" name="email" htmlFor="employee-email">
+            <Input id="employee-email" type="email" />
+          </Form.Item>
+          <Form.Item label="Số điện thoại" name="phone" htmlFor="employee-phone">
+            <Input id="employee-phone" />
+          </Form.Item>
+          <Form.Item label="Ngày sinh" name="dateOfBirth" htmlFor="employee-dob">
+            <Input id="employee-dob" type="date" />
+          </Form.Item>
+          <Form.Item label="Giới tính" name="gender" htmlFor="employee-gender">
+            <Select
+              id="employee-gender"
+              placeholder="Chọn giới tính"
+              options={[
+                { value: "MALE", label: "Nam" },
+                { value: "FEMALE", label: "Nữ" },
+                { value: "OTHER", label: "Khác" }
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="CMND/CCCD" name="nationalId" htmlFor="employee-national-id">
+            <Input id="employee-national-id" />
+          </Form.Item>
+          <Form.Item label="Địa chỉ" name="address" htmlFor="employee-address">
+            <Input id="employee-address" />
+          </Form.Item>
+          <Form.Item label="Số tài khoản" name="bankAccount" htmlFor="employee-bank">
+            <Input id="employee-bank" />
+          </Form.Item>
+          <Form.Item label="Mã số thuế" name="taxCode" htmlFor="employee-tax">
+            <Input id="employee-tax" />
+          </Form.Item>
+          <Form.Item label="Vị trí" name="positionId" htmlFor="employee-position">
+            <Select
+              id="employee-position"
+              placeholder="Chọn vị trí"
+              options={positions.map((p) => ({ value: p.id, label: p.title }))}
+            />
+          </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving} disabled={!departments.length}>
-            Luu nhan vien
+            {editingEmployee ? "Lưu thay đổi" : "Lưu nhân viên"}
           </Button>
         </Form>
       </FormDrawer>

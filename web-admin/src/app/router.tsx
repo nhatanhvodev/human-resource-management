@@ -7,6 +7,7 @@ import DepartmentsPage from "../features/departments/DepartmentsPage";
 import EmployeesPage from "../features/employees/EmployeesPage";
 import LeavePage from "../features/leave/LeavePage";
 import PayrollPage from "../features/payroll/PayrollPage";
+import PerformancePage from "../features/performance/PerformancePage";
 import RecruitmentPage from "../features/recruitment/RecruitmentPage";
 import DevSettingsPage from "../features/settings/DevSettingsPage";
 
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
       {
         path: "payroll",
         element: <PayrollPage />
+      },
+      {
+        path: "performance",
+        element: <PerformancePage />
       },
       {
         path: "settings",

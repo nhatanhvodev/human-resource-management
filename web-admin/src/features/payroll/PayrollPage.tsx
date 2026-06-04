@@ -1,4 +1,4 @@
-import { Alert, Button, Drawer, Form, Input, Space } from "antd";
+import { Alert, Button, Descriptions, Drawer, Form, Input, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 
@@ -20,6 +20,19 @@ type PayrollRun = {
   executedAt?: string;
 };
 
+type Payslip = {
+  id: string;
+  payrollRunId?: string;
+  employeeId?: string;
+  employeeName?: string;
+  basicSalary: number;
+  allowance: number;
+  deduction: number;
+  overtimePay: number;
+  netPay: number;
+  issuedAt?: string;
+};
+
 export default function PayrollPage() {
   const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
@@ -30,6 +43,11 @@ export default function PayrollPage() {
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm<{ fromDate: string; toDate: string }>();
 
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [openPayslips, setOpenPayslips] = useState(false);
+  const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
+  const [currentRunId, setCurrentRunId] = useState<string>("");
+
   const loadPeriods = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -39,7 +57,7 @@ export default function PayrollPage() {
       });
       setPeriods(response.data.items ?? []);
     } catch {
-      setError("Unable to load payroll periods. Check token, tenant, and backend connectivity.");
+      setError("Không tải được danh sách kỳ lương. Kiểm tra token, tenant và kết nối backend.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +76,7 @@ export default function PayrollPage() {
       setOpenPeriod(false);
       await loadPeriods();
     } catch {
-      setError("Unable to create payroll period. Check date range and duplicate periods.");
+      setError("Không tạo được kỳ lương. Kiểm tra khoảng ngày hoặc kỳ bị trùng.");
     } finally {
       setSaving(false);
     }
@@ -76,13 +94,26 @@ export default function PayrollPage() {
     }
   };
 
+  const openPayslipsDrawer = async (runId: string) => {
+    setCurrentRunId(runId);
+    setOpenPayslips(true);
+    try {
+      const response = await apiClient.get<PageResponse<Payslip>>(`/payroll-runs/${runId}/payslips`, {
+        params: { page: 0, size: 200 }
+      });
+      setPayslips(response.data.items ?? []);
+    } catch {
+      setPayslips([]);
+    }
+  };
+
   const executePeriod = async (periodId: string) => {
     setError(null);
     try {
       await apiClient.post(`/payroll-runs/${periodId}/execute`);
       await openRunsDrawer(periodId);
     } catch {
-      setError("Unable to execute payroll run for this period.");
+      setError("Không chạy được bảng lương cho kỳ này.");
     }
   };
 
@@ -92,64 +123,97 @@ export default function PayrollPage() {
       await apiClient.post(`/payroll-periods/${periodId}/close`);
       await loadPeriods();
     } catch {
-      setError("Unable to close payroll period.");
+      setError("Không đóng được kỳ lương.");
     }
   };
 
   const periodColumns: ColumnsType<PayrollPeriod> = [
     {
-      title: "Period",
+      title: "Kỳ lương",
       dataIndex: "id",
       render: (value: string) => value.slice(0, 8)
     },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
       width: 160,
       render: (value: string) => <StatusTag value={value} />
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       width: 260,
-      render: (_, row) => (
-        <Space>
-          <Button size="small" onClick={() => void openRunsDrawer(row.id)}>
-            Runs
-          </Button>
-          <Button size="small" onClick={() => void executePeriod(row.id)}>
-            Execute
-          </Button>
-          <Button size="small" onClick={() => void closePeriod(row.id)}>
-            Close
-          </Button>
-        </Space>
-      )
+      render: (_, row) => {
+        const isClosed = row.status === "CLOSED";
+
+        return (
+          <Space>
+            <Button size="small" onClick={() => void openRunsDrawer(row.id)}>
+              Lần chạy
+            </Button>
+            <Button size="small" disabled={isClosed} onClick={() => void executePeriod(row.id)}>
+              Chạy lương
+            </Button>
+            <Button size="small" disabled={isClosed} onClick={() => void closePeriod(row.id)}>
+              Đóng kỳ
+            </Button>
+          </Space>
+        );
+      }
     }
   ];
 
   const runColumns: ColumnsType<PayrollRun> = [
-    { title: "Run", dataIndex: "id" },
+    { title: "Lần chạy", dataIndex: "id" },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
       width: 160,
       render: (value?: string) => (value ? <StatusTag value={value} /> : null)
     },
-    { title: "Executed", dataIndex: "executedAt", width: 220 }
+    { title: "Thời điểm chạy", dataIndex: "executedAt", width: 220 },
+    {
+      title: "Thao tác",
+      key: "actions",
+      width: 120,
+      render: (_, row) => (
+        <Button size="small" onClick={() => void openPayslipsDrawer(row.id)}>
+          Phiếu lương
+        </Button>
+      )
+    }
+  ];
+
+  const payslipColumns: ColumnsType<Payslip> = [
+    { title: "Mã phiếu", dataIndex: "id", render: (v: string) => v.slice(0, 8) },
+    { title: "Lương cơ bản", dataIndex: "basicSalary", render: (v: number) => v?.toLocaleString('vi-VN') },
+    { title: "Phụ cấp", dataIndex: "allowance", render: (v: number) => v?.toLocaleString('vi-VN') },
+    { title: "Khấu trừ", dataIndex: "deduction", render: (v: number) => v?.toLocaleString('vi-VN') },
+    { title: "Tăng ca", dataIndex: "overtimePay", render: (v: number) => v?.toLocaleString('vi-VN') },
+    { title: "Thực lãnh", dataIndex: "netPay", render: (v: number) => <strong>{v?.toLocaleString('vi-VN')}</strong> },
+    {
+      title: "",
+      key: "detail",
+      width: 80,
+      render: (_, row) => (
+        <Button size="small" type="link" onClick={() => setSelectedPayslip(row)}>
+          Chi tiết
+        </Button>
+      )
+    }
   ];
 
   return (
     <>
       <div className="page-header">
-        <h1>Payroll</h1>
-        <p>Manage payroll periods, execution runs, and close operations.</p>
+        <h1>Bảng lương</h1>
+        <p>Quản lý kỳ lương, các lần chạy tính lương và thao tác đóng kỳ.</p>
       </div>
 
       <PageToolbar>
         <Space />
         <Button type="primary" onClick={() => setOpenPeriod(true)}>
-          Create payroll period
+          Tạo kỳ lương
         </Button>
       </PageToolbar>
 
@@ -163,20 +227,59 @@ export default function PayrollPage() {
         pagination={false}
       />
 
-      <Drawer title="Payroll runs" width="min(520px, calc(100vw - 32px))" open={openRuns} onClose={() => setOpenRuns(false)}>
+      <Drawer title="Các lần chạy lương" width="min(520px, calc(100vw - 32px))" open={openRuns} onClose={() => setOpenRuns(false)}>
         <AppTable<PayrollRun> rowKey="id" columns={runColumns} dataSource={runs} pagination={false} />
       </Drawer>
 
-      <FormDrawer open={openPeriod} title="Create payroll period" onClose={() => setOpenPeriod(false)}>
+      <Drawer
+        title={`Phiếu lương — Lần chạy ${currentRunId.slice(0, 8)}`}
+        width="min(800px, calc(100vw - 32px))"
+        open={openPayslips}
+        onClose={() => { setOpenPayslips(false); setPayslips([]); }}
+      >
+        <AppTable<Payslip> rowKey="id" columns={payslipColumns} dataSource={payslips} pagination={false} />
+      </Drawer>
+
+      <Drawer
+        title="Chi tiết phiếu lương"
+        width="min(480px, calc(100vw - 32px))"
+        open={!!selectedPayslip}
+        onClose={() => setSelectedPayslip(null)}
+      >
+        {selectedPayslip && (
+          <Descriptions bordered column={1} size="middle">
+            <Descriptions.Item label="Lương cơ bản">
+              {selectedPayslip.basicSalary?.toLocaleString('vi-VN')} VNĐ
+            </Descriptions.Item>
+            <Descriptions.Item label="Phụ cấp">
+              {selectedPayslip.allowance?.toLocaleString('vi-VN')} VNĐ
+            </Descriptions.Item>
+            <Descriptions.Item label="Khấu trừ (BHXH+BHYT+BHTN)">
+              -{selectedPayslip.deduction?.toLocaleString('vi-VN')} VNĐ
+            </Descriptions.Item>
+            <Descriptions.Item label="Lương tăng ca">
+              {selectedPayslip.overtimePay?.toLocaleString('vi-VN')} VNĐ
+            </Descriptions.Item>
+            <Descriptions.Item label="Thực lãnh">
+              <strong>{selectedPayslip.netPay?.toLocaleString('vi-VN')} VNĐ</strong>
+            </Descriptions.Item>
+            <Descriptions.Item label="Ngày phát hành">
+              {selectedPayslip.issuedAt ?? "Chưa phát hành"}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Drawer>
+
+      <FormDrawer open={openPeriod} title="Tạo kỳ lương" onClose={() => setOpenPeriod(false)}>
         <Form form={form} layout="vertical" onFinish={createPeriod}>
-          <Form.Item label="Tu ngay" name="fromDate" htmlFor="payroll-start" rules={[{ required: true, message: "Chon ngay bat dau" }]}>
+          <Form.Item label="Từ ngày" name="fromDate" htmlFor="payroll-start" rules={[{ required: true, message: "Chọn ngày bắt đầu" }]}>
             <Input id="payroll-start" type="date" />
           </Form.Item>
-          <Form.Item label="Den ngay" name="toDate" htmlFor="payroll-end" rules={[{ required: true, message: "Chon ngay ket thuc" }]}>
+          <Form.Item label="Đến ngày" name="toDate" htmlFor="payroll-end" rules={[{ required: true, message: "Chọn ngày kết thúc" }]}>
             <Input id="payroll-end" type="date" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving}>
-            Tao ky
+            Tạo kỳ
           </Button>
         </Form>
       </FormDrawer>
