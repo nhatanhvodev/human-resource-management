@@ -9,6 +9,7 @@ import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
 import { PageToolbar } from "../../shared/ui/PageToolbar";
 import { StatusTag } from "../../shared/ui/StatusTag";
+import OnboardingBoard from "./OnboardingBoard";
 
 type Template = { id: string; name: string; description: string };
 type TemplateTask = { id: string; templateId: string; title: string; description: string; orderIndex: number };
@@ -152,6 +153,10 @@ export default function OnboardingPage() {
               </Form>
             </div>
           )
+        },
+        {
+          key: "board", label: "Bảng theo dõi",
+          children: <OnboardingBoard />
         }
       ]} />
 

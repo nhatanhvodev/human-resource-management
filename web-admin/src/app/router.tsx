@@ -17,6 +17,7 @@ import AttendancePage from "../features/attendance/AttendancePage";
 import DocumentsPage from "../features/documents/DocumentsPage";
 import OnboardingPage from "../features/onboarding/OnboardingPage";
 import TrainingPage from "../features/training/TrainingPage";
+import CourseDetailPage from "../features/training/CourseDetailPage";
 import AssetsPage from "../features/assets/AssetsPage";
 import AnnouncementsPage from "../features/announcements/AnnouncementsPage";
 import AuditLogPage from "../features/audit/AuditLogPage";
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { path: "documents", element: <DocumentsPage /> },
       { path: "onboarding", element: <OnboardingPage /> },
       { path: "training", element: <TrainingPage /> },
+      { path: "training/courses/:id", element: <CourseDetailPage /> },
       { path: "assets", element: <AssetsPage /> },
       { path: "announcements", element: <AnnouncementsPage /> },
       { path: "audit", element: <AuditLogPage /> },

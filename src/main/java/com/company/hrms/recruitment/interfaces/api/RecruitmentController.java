@@ -163,8 +163,9 @@ public class RecruitmentController {
 
     @GetMapping("/interviews")
     @PreAuthorize("hasAuthority('recruitment:read')")
-    public List<InterviewResponse> listInterviews(@RequestParam UUID applicationId) {
-        return recruitmentService.listInterviews(applicationId).stream()
+    public List<InterviewResponse> listInterviews(@RequestParam(required = false) UUID applicationId,
+                                                  Pageable pageable) {
+        return recruitmentService.listInterviews(applicationId, pageable).stream()
             .map(this::toInterviewResponse).toList();
     }
 

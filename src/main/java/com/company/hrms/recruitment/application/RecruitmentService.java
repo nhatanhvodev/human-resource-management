@@ -160,8 +160,11 @@ public class RecruitmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<Interview> listInterviews(UUID applicationId) {
-        return interviewRepository.findByTenantIdAndApplicationId(TenantContext.get(), applicationId);
+    public List<Interview> listInterviews(UUID applicationId, Pageable pageable) {
+        if (applicationId != null) {
+            return interviewRepository.findByTenantIdAndApplicationId(TenantContext.get(), applicationId);
+        }
+        return interviewRepository.findAllByTenantId(TenantContext.get(), pageable).getContent();
     }
 
     public record ConversionResult(UUID employeeId, UUID applicationId, String applicationStatus) {

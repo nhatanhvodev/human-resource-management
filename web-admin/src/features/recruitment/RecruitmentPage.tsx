@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, Select, Space, Tabs } from "antd";
+import { Alert, Button, Drawer, Form, Input, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -7,6 +7,9 @@ import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
 import { StatusTag } from "../../shared/ui/StatusTag";
+import InterviewFeedback from "./InterviewFeedback";
+import InterviewScheduler from "./InterviewScheduler";
+import RecruitmentKanban from "./RecruitmentKanban";
 
 type Candidate = {
   id: string;
@@ -30,6 +33,18 @@ type Department = {
   id: string;
   code: string;
   name: string;
+};
+
+type Interview = {
+  id: string;
+  applicationId: string;
+  interviewerId: string;
+  scheduledAt: string;
+  location: string;
+  meetingLink: string;
+  feedback: string;
+  rating: number;
+  status: string;
 };
 
 function usePagedData<T>(path: string, errorMessage: string) {
@@ -81,6 +96,10 @@ export default function RecruitmentPage() {
   const [candidateForm] = Form.useForm<{ fullName: string }>();
   const [postingForm] = Form.useForm<{ title: string }>();
   const [convertForm] = Form.useForm<{ employeeNo: string; departmentId: string }>();
+  const [interviewOpen, setInterviewOpen] = useState(false);
+  const [feedbackInterviewId, setFeedbackInterviewId] = useState<string | null>(null);
+  const [interviewList, setInterviewList] = useState<Interview[]>([]);
+  const [interviewLoading, setInterviewLoading] = useState(false);
 
   const loadDepartments = useCallback(async () => {
     try {
@@ -96,6 +115,35 @@ export default function RecruitmentPage() {
   useEffect(() => {
     void loadDepartments();
   }, [loadDepartments]);
+
+  const loadInterviews = useCallback(async () => {
+    setInterviewLoading(true);
+    try {
+      const res = await apiClient.get<Interview[]>("/interviews");
+      setInterviewList(res.data ?? []);
+    } catch { setInterviewList([]); }
+    finally { setInterviewLoading(false); }
+  }, []);
+
+  useEffect(() => { void loadInterviews(); }, [loadInterviews]);
+
+  const intervieweeColumns = useMemo<ColumnsType<Interview>>(() => [
+    { title: "Hồ sơ", dataIndex: "applicationId", width: 120, render: (v: string) => v.slice(0, 8) },
+    { title: "Người PV", dataIndex: "interviewerId", width: 120, render: (v: string) => v?.slice(0, 8) ?? "-" },
+    { title: "Thời gian", dataIndex: "scheduledAt", width: 180 },
+    { title: "Địa điểm", dataIndex: "location", width: 120, render: (v: string) => v ?? "-" },
+    { title: "Rating", dataIndex: "rating", width: 70, render: (v: number) => v ?? "-" },
+    {
+      title: "Trạng thái", dataIndex: "status", width: 130,
+      render: (v: string) => <StatusTag value={v} />
+    },
+    {
+      title: "", key: "actions", width: 100,
+      render: (_, row) => (
+        <Button size="small" onClick={() => setFeedbackInterviewId(row.id)}>Phản hồi</Button>
+      )
+    }
+  ], []);
 
   const openCandidateEdit = (candidate: Candidate) => {
     setEditingCandidate(candidate);
@@ -302,6 +350,28 @@ export default function RecruitmentPage() {
                 />
               </>
             )
+          },
+          {
+            key: "kanban",
+            label: "Kanban",
+            children: (
+              <>
+                {applications.error ? <Alert type="warning" showIcon message={applications.error} style={{ marginBottom: 16 }} /> : null}
+                <RecruitmentKanban applications={applications.items} />
+              </>
+            )
+          },
+          {
+            key: "interviews",
+            label: "Phỏng vấn",
+            children: (
+              <>
+                <Space style={{ marginBottom: 16 }}>
+                  <Button type="primary" onClick={() => setInterviewOpen(true)}>Lên lịch phỏng vấn</Button>
+                </Space>
+                <AppTable<Interview> rowKey="id" loading={interviewLoading} columns={intervieweeColumns} dataSource={interviewList} pagination={false} />
+              </>
+            )
           }
         ]}
       />
@@ -350,6 +420,12 @@ export default function RecruitmentPage() {
           </Space>
         </Form>
       </FormDrawer>
+      <Drawer title="Lên lịch phỏng vấn" width="min(480px, calc(100vw - 32px))" open={interviewOpen} onClose={() => setInterviewOpen(false)} destroyOnClose>
+        <InterviewScheduler open={interviewOpen} applications={applications.items} onClose={() => setInterviewOpen(false)} onSaved={() => { setInterviewOpen(false); void loadInterviews(); }} />
+      </Drawer>
+
+      <Drawer title="Phản hồi phỏng vấn" width="min(420px, calc(100vw - 32px))" open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} destroyOnClose>
+        <InterviewFeedback interviewId={feedbackInterviewId} open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} onSaved={() => { setFeedbackInterviewId(null); void loadInterviews(); }} />
+      </Drawer>
     </>
-  );
 }

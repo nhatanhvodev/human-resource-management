@@ -21,6 +21,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { DEV_SETTINGS_CHANGED, loadDevSettings } from "../../shared/config/devSettingsStore";
 import { NotificationBell } from "../../shared/ui/NotificationBell";
+import { LanguageSwitcher } from "../../shared/i18n/LanguageSwitcher";
 
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
@@ -91,6 +92,7 @@ export function AdminShell() {
             <Text strong>Không gian quản trị</Text>
           </div>
           <div className="app-shell__status">
+            <LanguageSwitcher />
             <NotificationBell />
             <Tag className="app-shell__status-tag" color={devSettings.tenantId ? "blue" : "default"} title={`Mã đơn vị: ${devSettings.tenantId || "chưa thiết lập"}`}>
               <span className="app-shell__status-full">Mã đơn vị: {devSettings.tenantId || "chưa thiết lập"}</span>

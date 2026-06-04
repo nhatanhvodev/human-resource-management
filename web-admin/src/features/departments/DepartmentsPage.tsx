@@ -1,5 +1,5 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Popconfirm, Space } from "antd";
+import { Alert, Button, Form, Input, Popconfirm, Space, Tabs } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -8,6 +8,7 @@ import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
 import { PageToolbar } from "../../shared/ui/PageToolbar";
+import OrgChart from "./OrgChart";
 
 type Department = {
   id: string;
@@ -152,30 +153,43 @@ export default function DepartmentsPage() {
         <p>Quản lý mã, tên và cấu trúc phòng ban trong tổ chức.</p>
       </div>
 
-      <PageToolbar>
-        <Input.Search
-          allowClear
-          placeholder="Tìm theo mã hoặc tên"
-          style={{ width: 280 }}
-          onSearch={(value) => {
-            setPage(0);
-            setKeyword(value.trim());
-          }}
-        />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
-          Thêm phòng ban
-        </Button>
-      </PageToolbar>
+      <Tabs items={[
+        {
+          key: "list", label: "Danh sách",
+          children: (
+            <>
+              <PageToolbar>
+                <Input.Search
+                  allowClear
+                  placeholder="Tìm theo mã hoặc tên"
+                  style={{ width: 280 }}
+                  onSearch={(value) => {
+                    setPage(0);
+                    setKeyword(value.trim());
+                  }}
+                />
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
+                  Thêm phòng ban
+                </Button>
+              </PageToolbar>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+              {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
 
-      <AppTable<Department>
-        rowKey="id"
-        loading={loading}
-        dataSource={data.items}
-        columns={columns}
-        pagination={pagination}
-      />
+              <AppTable<Department>
+                rowKey="id"
+                loading={loading}
+                dataSource={data.items}
+                columns={columns}
+                pagination={pagination}
+              />
+            </>
+          )
+        },
+        {
+          key: "chart", label: "Sơ đồ tổ chức",
+          children: <OrgChart />
+        }
+      ]} />
 
       <FormDrawer open={openCreate} title={editingDepartment ? "Cập nhật phòng ban" : "Thêm phòng ban"} onClose={closeDrawer}>
         <Form form={form} layout="vertical" onFinish={submitDepartment}>

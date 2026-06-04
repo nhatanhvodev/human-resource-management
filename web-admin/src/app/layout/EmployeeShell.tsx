@@ -6,6 +6,9 @@ import { Button, Drawer, Layout, Menu, Typography } from 'antd';
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import { NotificationBell } from '../../shared/ui/NotificationBell';
+import { LanguageSwitcher } from '../../shared/i18n/LanguageSwitcher';
+
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
 
@@ -52,6 +55,10 @@ export function EmployeeShell() {
               onClick={() => setMobileNavOpen(true)}
             />
             <Text strong>Cổng nhân viên</Text>
+          </div>
+          <div className="app-shell__status" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <LanguageSwitcher />
+            <NotificationBell />
           </div>
         </Header>
         <Content className="app-shell__content">
