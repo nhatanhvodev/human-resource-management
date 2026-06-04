@@ -4,8 +4,10 @@ import com.company.hrms.reporting.application.DashboardQueryService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -33,5 +35,23 @@ public class DashboardController {
     @PreAuthorize("hasAuthority('dashboard:read')")
     public List<DashboardQueryService.DepartmentHeadcount> headcountByDepartment() {
         return dashboardQueryService.headcountByDepartment();
+    }
+
+    @GetMapping("/department-distribution")
+    @PreAuthorize("hasAuthority('dashboard:read')")
+    public List<DashboardQueryService.DepartmentDistribution> departmentDistribution() {
+        return dashboardQueryService.departmentDistribution();
+    }
+
+    @GetMapping("/leave-summary")
+    @PreAuthorize("hasAuthority('dashboard:read')")
+    public DashboardQueryService.LeaveSummary leaveSummary() {
+        return dashboardQueryService.leaveSummary();
+    }
+
+    @GetMapping("/payroll-summary")
+    @PreAuthorize("hasAuthority('dashboard:read')")
+    public DashboardQueryService.PayrollSummary payrollSummary() {
+        return dashboardQueryService.payrollSummary();
     }
 }

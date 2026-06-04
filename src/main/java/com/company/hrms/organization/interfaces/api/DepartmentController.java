@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -68,6 +69,12 @@ public class DepartmentController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {
         departmentService.delete(id);
+    }
+
+    @GetMapping("/tree")
+    @PreAuthorize("hasAuthority('department:read')")
+    public List<DepartmentService.DepartmentTreeNode> tree() {
+        return departmentService.tree();
     }
 
     public record CreateDepartmentRequest(@NotBlank String code, @NotBlank String name) {

@@ -1,5 +1,6 @@
 package com.company.hrms.organization.application;
 
+import com.company.hrms.employee.domain.Employee;
 import com.company.hrms.employee.infrastructure.EmployeeRepository;
 import com.company.hrms.organization.domain.Department;
 import com.company.hrms.organization.infrastructure.DepartmentRepository;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -64,6 +66,22 @@ public class DepartmentService {
         return department;
     }
 
+    @Transactional(readOnly = true)
+    public List<DepartmentTreeNode> tree() {
+        String tenantId = TenantContext.get();
+        List<Department> departments = departmentRepository.findAllByTenantId(tenantId);
+        return departments.stream().map(dept -> {
+            List<Employee> members = employeeRepository.findAllByTenantId(tenantId, Pageable.unpaged())
+                .stream()
+                .filter(e -> e.getDepartment() != null && dept.getId().equals(e.getDepartment().getId()))
+                .toList();
+            List<DepartmentTreeNode.EmployeeNode> employeeNodes = members.stream()
+                .map(e -> new DepartmentTreeNode.EmployeeNode(e.getId(), e.getFullName(), e.getEmployeeNo()))
+                .toList();
+            return new DepartmentTreeNode(dept.getId(), dept.getCode(), dept.getName(), employeeNodes);
+        }).toList();
+    }
+
     @Transactional
     public void delete(UUID id) {
         String tenantId = TenantContext.get();
@@ -72,5 +90,9 @@ public class DepartmentService {
             throw new ConflictException("DEPARTMENT_IN_USE");
         }
         departmentRepository.delete(department);
+    }
+
+    public record DepartmentTreeNode(UUID id, String code, String name, List<DepartmentTreeNode.EmployeeNode> employees) {
+        public record EmployeeNode(UUID id, String fullName, String employeeNo) {}
     }
 }

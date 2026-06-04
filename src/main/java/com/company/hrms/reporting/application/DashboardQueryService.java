@@ -5,6 +5,7 @@ import com.company.hrms.attendance.infrastructure.LeaveRequestRepository;
 import com.company.hrms.employee.domain.EmploymentStatus;
 import com.company.hrms.employee.infrastructure.EmployeeRepository;
 import com.company.hrms.integration.infrastructure.OutboxEventRepository;
+import com.company.hrms.organization.domain.Department;
 import com.company.hrms.organization.infrastructure.DepartmentRepository;
 import com.company.hrms.payroll.domain.PayrollPeriodStatus;
 import com.company.hrms.payroll.infrastructure.PayrollPeriodRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -72,4 +74,35 @@ public class DashboardQueryService {
     public record DepartmentHeadcount(UUID departmentId, String departmentName, long count) {}
 
     public record Activity(String type, String message, Instant timestamp) {}
+
+    @Transactional(readOnly = true)
+    public List<DepartmentDistribution> departmentDistribution() {
+        String tenantId = TenantContext.get();
+        return departmentRepository.findAllByTenantId(tenantId).stream()
+            .map(d -> {
+                long count = employeeRepository.countByTenantIdAndDepartment_Id(tenantId, d.getId());
+                return new DepartmentDistribution(d.getName(), count);
+            }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public LeaveSummary leaveSummary() {
+        String tenantId = TenantContext.get();
+        long pending = leaveRequestRepository.countByTenantIdAndStatus(tenantId, LeaveStatus.PENDING);
+        long approved = leaveRequestRepository.findByTenantIdAndStatus(tenantId, LeaveStatus.APPROVED, org.springframework.data.domain.Pageable.unpaged()).getTotalElements();
+        long rejected = leaveRequestRepository.findByTenantIdAndStatus(tenantId, LeaveStatus.REJECTED, org.springframework.data.domain.Pageable.unpaged()).getTotalElements();
+        return new LeaveSummary(pending + approved + rejected, approved, pending);
+    }
+
+    @Transactional(readOnly = true)
+    public PayrollSummary payrollSummary() {
+        String tenantId = TenantContext.get();
+        long open = payrollPeriodRepository.countByTenantIdAndStatus(tenantId, PayrollPeriodStatus.OPEN);
+        long closed = payrollPeriodRepository.countByTenantIdAndStatus(tenantId, PayrollPeriodStatus.CLOSED);
+        return new PayrollSummary(open + closed, closed, open);
+    }
+
+    public record DepartmentDistribution(String name, long count) {}
+    public record LeaveSummary(long total, long approved, long pending) {}
+    public record PayrollSummary(long total, long closed, long open) {}
 }
