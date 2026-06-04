@@ -32,7 +32,7 @@ public class PayrollController {
     public PageResponse<PayrollPeriodResponse> listPeriods(Pageable pageable) {
         return PageResponse.from(
             payrollService.listPeriods(pageable)
-                .map(period -> new PayrollPeriodResponse(period.getId(), period.getStatus().name()))
+                .map(PayrollController::toPeriodResponse)
         );
     }
 
@@ -40,7 +40,7 @@ public class PayrollController {
     @PreAuthorize("hasAuthority('payroll:create')")
     public PayrollPeriodResponse createPeriod(@RequestBody CreatePeriodRequest request) {
         PayrollPeriod period = payrollService.createPeriod(request.fromDate(), request.toDate());
-        return new PayrollPeriodResponse(period.getId(), period.getStatus().name());
+        return toPeriodResponse(period);
     }
 
     @GetMapping("/payroll-runs")
@@ -48,7 +48,7 @@ public class PayrollController {
     public PageResponse<PayrollRunResponse> listRuns(@RequestParam UUID periodId, Pageable pageable) {
         return PageResponse.from(
             payrollService.listRuns(periodId, pageable)
-                .map(run -> new PayrollRunResponse(run.getId()))
+                .map(PayrollController::toRunResponse)
         );
     }
 
@@ -56,14 +56,14 @@ public class PayrollController {
     @PreAuthorize("hasAuthority('payroll:execute')")
     public PayrollRunResponse execute(@PathVariable UUID periodId) {
         PayrollRun run = payrollService.execute(periodId);
-        return new PayrollRunResponse(run.getId());
+        return toRunResponse(run);
     }
 
     @PostMapping("/payroll-periods/{periodId}/close")
     @PreAuthorize("hasAuthority('payroll:approve')")
     public PayrollPeriodResponse close(@PathVariable UUID periodId) {
         PayrollPeriod period = payrollService.closePeriod(periodId);
-        return new PayrollPeriodResponse(period.getId(), period.getStatus().name());
+        return toPeriodResponse(period);
     }
 
     @GetMapping("/payroll-runs/{runId}/payslips")
@@ -79,9 +79,17 @@ public class PayrollController {
             p.getBasicSalary(), p.getAllowance(), p.getDeduction(), p.getOvertimePay(), p.getNetPay(), p.getIssuedAt());
     }
 
+    private static PayrollPeriodResponse toPeriodResponse(PayrollPeriod period) {
+        return new PayrollPeriodResponse(period.getId(), period.getPeriodFrom(), period.getPeriodTo(), period.getStatus().name());
+    }
+
+    private static PayrollRunResponse toRunResponse(PayrollRun run) {
+        return new PayrollRunResponse(run.getId(), run.getStatus().name());
+    }
+
     public record CreatePeriodRequest(@NotNull LocalDate fromDate, @NotNull LocalDate toDate) {}
-    public record PayrollPeriodResponse(UUID id, String status) {}
-    public record PayrollRunResponse(UUID id) {}
+    public record PayrollPeriodResponse(UUID id, LocalDate periodFrom, LocalDate periodTo, String status) {}
+    public record PayrollRunResponse(UUID id, String status) {}
     public record PayslipResponse(UUID id, UUID payrollRunId, UUID employeeId, BigDecimal basicSalary,
                                    BigDecimal allowance, BigDecimal deduction, BigDecimal overtimePay,
                                    BigDecimal netPay, Instant issuedAt) {}

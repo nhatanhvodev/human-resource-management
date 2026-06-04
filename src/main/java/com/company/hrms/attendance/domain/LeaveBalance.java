@@ -26,7 +26,7 @@ public class LeaveBalance extends AuditableEntity {
     @Column(name = "leave_type", nullable = false, length = 20)
     private LeaveType leaveType;
 
-    @Column(name = "year", nullable = false)
+    @Column(name = "\"year\"", nullable = false)
     private int year;
 
     @Column(name = "total_days", nullable = false)

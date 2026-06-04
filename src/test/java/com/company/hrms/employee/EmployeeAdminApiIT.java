@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
@@ -28,6 +29,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EmployeeAdminApiIT {
     @Autowired
     private WebApplicationContext context;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private MockMvc mvc;
 
@@ -76,6 +80,56 @@ class EmployeeAdminApiIT {
             .andExpect(jsonPath("$.items[*].employeeNo", not(hasItem("E-LIST-1"))))
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.page").value(0));
+    }
+
+    @Test
+    void listsEmployeesWithPositionTitle() throws Exception {
+        String tenantId = "tenant-position-list";
+        String departmentId = createDepartment(tenantId, "ENG-POS-LIST", "Engineering Position List");
+        String positionId = "11111111-2222-4333-8444-555555555555";
+        createPosition(positionId, tenantId, "DEV-POS-LIST", "Backend Developer", departmentId);
+        String employeeId = createEmployee(tenantId, "E-POS-LIST", "Position User", departmentId, "2026-05-27");
+
+        mvc.perform(put("/api/v1/employees/{id}/profile", employeeId)
+                .header("X-Tenant-Id", tenantId)
+                .with(jwt().authorities(new SimpleGrantedAuthority("employee:update")))
+                .contentType("application/json")
+                .content("""
+                    {
+                      "fullName":"Position User",
+                      "departmentId":"%s",
+                      "hireDate":"2026-05-27",
+                      "positionId":"%s"
+                    }
+                    """.formatted(departmentId, positionId)))
+            .andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/employees")
+                .param("page", "0")
+                .param("size", "10")
+                .header("X-Tenant-Id", tenantId)
+                .with(jwt().authorities(new SimpleGrantedAuthority("employee:read"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].employeeNo").value("E-POS-LIST"))
+            .andExpect(jsonPath("$.items[0].positionTitle").value("Backend Developer"));
+    }
+
+    @Test
+    void listsPositionsForEmployeeProfileForm() throws Exception {
+        String tenantId = "tenant-position-options";
+        String departmentId = createDepartment(tenantId, "ENG-POS-OPTIONS", "Engineering Position Options");
+        String positionId = "22222222-3333-4444-8555-666666666666";
+        createPosition(positionId, tenantId, "DEV-POS-OPTIONS", "Frontend Developer", departmentId);
+
+        mvc.perform(get("/api/v1/positions")
+                .param("page", "0")
+                .param("size", "10")
+                .header("X-Tenant-Id", tenantId)
+                .with(jwt().authorities(new SimpleGrantedAuthority("employee:read"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(positionId))
+            .andExpect(jsonPath("$.items[0].title").value("Frontend Developer"))
+            .andExpect(jsonPath("$.items[0].departmentId").value(departmentId));
     }
 
     @Test
@@ -176,6 +230,13 @@ class EmployeeAdminApiIT {
             .andReturn();
 
         return extractId(result.getResponse().getContentAsString());
+    }
+
+    private void createPosition(String id, String tenantId, String code, String title, String departmentId) {
+        jdbcTemplate.update("""
+            INSERT INTO position (id, tenant_id, code, title, department_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, now(), now())
+            """, java.util.UUID.fromString(id), tenantId, code, title, java.util.UUID.fromString(departmentId));
     }
 
     private static String extractId(String json) {

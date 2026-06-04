@@ -92,7 +92,7 @@ describe("EmployeesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Lưu thay đổi/i }));
 
     await waitFor(() => {
-      expect(mocks.apiPut).toHaveBeenCalledWith("/employees/emp-1", {
+      expect(mocks.apiPut).toHaveBeenCalledWith("/employees/emp-1/profile", {
         fullName: "Nguyễn Văn B",
         departmentId: "dept-1",
         hireDate: "2026-05-30"

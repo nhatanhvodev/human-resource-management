@@ -113,7 +113,8 @@ export default function EmployeesPage() {
       });
       setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
     } catch {
-      setError("Không tải được danh sách nhân viên. Kiểm tra token, tenant và kết nối backend.");
+      setData(emptyPage);
+      setError("Không tải được danh sách nhân viên");
     } finally {
       setLoading(false);
     }
@@ -203,25 +204,29 @@ export default function EmployeesPage() {
     setSaving(true);
     setError(null);
     try {
-      const payload = {
-        employeeNo: values.employeeNo?.trim(),
+      const profilePayload = {
         fullName: values.fullName.trim(),
         departmentId: values.departmentId,
         hireDate: values.hireDate,
-        email: values.email?.trim() || undefined,
-        phone: values.phone?.trim() || undefined,
-        dateOfBirth: values.dateOfBirth || undefined,
-        gender: values.gender || undefined,
-        nationalId: values.nationalId?.trim() || undefined,
-        address: values.address?.trim() || undefined,
-        bankAccount: values.bankAccount?.trim() || undefined,
-        taxCode: values.taxCode?.trim() || undefined,
-        positionId: values.positionId || undefined
+        ...(values.email?.trim() ? { email: values.email.trim() } : {}),
+        ...(values.phone?.trim() ? { phone: values.phone.trim() } : {}),
+        ...(values.dateOfBirth ? { dateOfBirth: values.dateOfBirth } : {}),
+        ...(values.gender ? { gender: values.gender } : {}),
+        ...(values.nationalId?.trim() ? { nationalId: values.nationalId.trim() } : {}),
+        ...(values.address?.trim() ? { address: values.address.trim() } : {}),
+        ...(values.bankAccount?.trim() ? { bankAccount: values.bankAccount.trim() } : {}),
+        ...(values.taxCode?.trim() ? { taxCode: values.taxCode.trim() } : {}),
+        ...(values.positionId ? { positionId: values.positionId } : {})
       };
       if (editingEmployee) {
-        await apiClient.put(`/employees/${editingEmployee.id}`, payload);
+        await apiClient.put(`/employees/${editingEmployee.id}/profile`, profilePayload);
       } else {
-        await apiClient.post("/employees", payload);
+        await apiClient.post("/employees", {
+          employeeNo: values.employeeNo?.trim(),
+          fullName: profilePayload.fullName,
+          departmentId: profilePayload.departmentId,
+          hireDate: profilePayload.hireDate
+        });
       }
       form.resetFields();
       setOpenCreate(false);
@@ -331,6 +336,7 @@ export default function EmployeesPage() {
   };
 
   const detailDepartment = detailEmployee ? departmentById.get(detailEmployee.departmentId) : undefined;
+  const isLoadError = error === "Không tải được danh sách nhân viên";
 
   const contractColumns: ColumnsType<EmployeeContract> = [
     { title: "Loại hợp đồng", dataIndex: "contractType" },
@@ -375,15 +381,25 @@ export default function EmployeesPage() {
         </Button>
       </PageToolbar>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {error ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={error}
+          description={isLoadError ? "Kiểm tra token, tenant và kết nối backend rồi tải lại trang." : undefined}
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
 
-      <AppTable<Employee>
-        rowKey="id"
-        loading={loading}
-        dataSource={data.items}
-        columns={columns}
-        pagination={pagination}
-      />
+      {isLoadError ? null : (
+        <AppTable<Employee>
+          rowKey="id"
+          loading={loading}
+          dataSource={data.items}
+          columns={columns}
+          pagination={pagination}
+        />
+      )}
 
       <Drawer
         title="Chi tiết nhân viên"

@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
-        items: [{ id: "11111111-1111-1111-1111-111111111111", code: "ENG-E2E", name: "Engineering E2E" }],
+        items: [{ id: "11111111-1111-1111-1111-111111111111", code: "ENG-E2E", name: "Phòng kỹ thuật E2E" }],
         page: 0,
         size: 10,
         totalItems: 1,
@@ -36,32 +36,32 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("admin happy path", async ({ page }) => {
+test("luồng quản trị cơ bản", async ({ page }) => {
   await page.goto("/settings");
-  await page.getByLabel("Token").fill("e2e-token");
-  await page.getByLabel("Tenant").fill("tenant-e2e");
-  await page.getByRole("button", { name: "Luu" }).click();
+  await page.getByLabel("Token truy cập").fill("e2e-token");
+  await page.getByLabel("Mã đơn vị").fill("tenant-e2e");
+  await page.getByRole("button", { name: "Lưu" }).click();
 
   await page.goto("/departments");
-  await page.getByRole("button", { name: "Them phong ban" }).click();
-  await page.getByLabel("Ma phong ban").fill("ENG-E2E");
-  await page.getByLabel("Ten phong ban").fill("Engineering E2E");
-  await page.getByRole("button", { name: "Tao moi" }).click();
+  await page.getByRole("button", { name: "Thêm phòng ban" }).click();
+  await page.getByLabel("Mã phòng ban").fill("ENG-E2E");
+  await page.getByLabel("Tên phòng ban").fill("Phòng kỹ thuật E2E");
+  await page.getByRole("button", { name: "Tạo mới" }).click();
 
   await page.goto("/employees");
-  await page.getByRole("button", { name: "Them nhan vien" }).click();
-  await page.getByLabel("Ma nhan vien").fill("E2E-001");
-  await page.getByLabel("Ho va ten").fill("Test Employee");
-  await page.getByLabel("Phong ban").click();
-  await page.getByText("ENG-E2E - Engineering E2E").click();
-  await page.getByLabel("Ngay vao lam").fill("2026-05-30");
-  await page.getByRole("button", { name: "Luu nhan vien" }).click();
+  await page.getByRole("button", { name: "Thêm nhân viên" }).click();
+  await page.getByLabel("Mã nhân viên").fill("E2E-001");
+  await page.getByLabel("Họ và tên").fill("Nhân viên E2E");
+  await page.getByLabel("Phòng ban").click();
+  await page.getByText("ENG-E2E - Phòng kỹ thuật E2E").click();
+  await page.getByLabel("Ngày vào làm").fill("2026-05-30");
+  await page.getByRole("button", { name: "Lưu nhân viên" }).click();
 
   await page.goto("/payroll");
-  await page.getByRole("button", { name: "Create payroll period" }).click();
-  await page.getByLabel("Tu ngay").fill("2026-06-01");
-  await page.getByLabel("Den ngay").fill("2026-06-30");
-  await page.getByRole("button", { name: "Tao ky" }).click();
+  await page.getByRole("button", { name: "Tạo kỳ lương" }).click();
+  await page.getByLabel("Từ ngày").fill("2026-06-01");
+  await page.getByLabel("Đến ngày").fill("2026-06-30");
+  await page.getByRole("button", { name: "Tạo kỳ", exact: true }).click();
 
-  await expect(page.getByRole("heading", { name: "Payroll" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bảng lương" })).toBeVisible();
 });

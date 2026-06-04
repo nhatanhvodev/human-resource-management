@@ -1,4 +1,4 @@
-import { Alert, Card, Col, Row, Skeleton, Statistic, Table } from "antd";
+import { Alert, Card, Col, Empty, Row, Skeleton, Statistic, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 
@@ -38,6 +38,20 @@ const activityColumns: ColumnsType<DashboardActivity> = [
   { title: "Thời gian", dataIndex: "timestamp", width: 220 }
 ];
 
+const { Text } = Typography;
+
+const activityEmptyText = (
+  <Empty
+    image={Empty.PRESENTED_IMAGE_SIMPLE}
+    description={
+      <div className="dashboard-empty">
+        <Text strong>Không có hoạt động gần đây</Text>
+        <Text type="secondary">Các sự kiện vận hành mới sẽ xuất hiện tại đây.</Text>
+      </div>
+    }
+  />
+);
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary>(defaultSummary);
   const [activities, setActivities] = useState<DashboardActivity[]>([]);
@@ -68,7 +82,10 @@ export default function DashboardPage() {
         }
       } catch {
         if (mounted) {
-          setError("Không tải được dữ liệu tổng quan. Kiểm tra token, tenant và kết nối backend.");
+          setSummary(defaultSummary);
+          setActivities([]);
+          setHeadcounts([]);
+          setError("Không tải được dữ liệu tổng quan");
         }
       } finally {
         if (mounted) {
@@ -91,7 +108,15 @@ export default function DashboardPage() {
         <p>Tóm tắt vận hành cho hệ thống quản trị nhân sự.</p>
       </div>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {error ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={error}
+          description="Kiểm tra token, tenant và kết nối backend rồi tải lại trang."
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
 
       <Row gutter={[16, 16]} className="summary-grid">
         <Col xs={24} sm={12} lg={4}>
@@ -162,13 +187,17 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <Table
-        rowKey={(row) => `${row.type}-${row.timestamp}`}
-        loading={loading}
-        dataSource={activities}
-        columns={activityColumns}
-        pagination={false}
-      />
+      {!error ? (
+        <Table
+          className="dashboard-activity-table"
+          rowKey={(row) => `${row.type}-${row.timestamp}`}
+          loading={loading}
+          dataSource={activities}
+          columns={activityColumns}
+          pagination={false}
+          locale={{ emptyText: activityEmptyText }}
+        />
+      ) : null}
     </>
   );
 }

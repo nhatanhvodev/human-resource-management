@@ -8,18 +8,18 @@ export default function ErrorPage() {
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
       ? error.message
-      : "Unexpected application error.";
+      : "Lỗi ứng dụng không xác định.";
 
   return (
     <div className="error-page">
       <Alert
         type="error"
         showIcon
-        message="Application error"
+        message="Lỗi ứng dụng"
         description={message}
         action={
           <Button size="small" onClick={() => navigate("/dashboard")}>
-            Back to dashboard
+            Về tổng quan
           </Button>
         }
       />

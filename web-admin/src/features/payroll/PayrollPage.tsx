@@ -11,6 +11,8 @@ import { StatusTag } from "../../shared/ui/StatusTag";
 
 type PayrollPeriod = {
   id: string;
+  periodFrom?: string;
+  periodTo?: string;
   status: string;
 };
 
@@ -98,10 +100,10 @@ export default function PayrollPage() {
     setCurrentRunId(runId);
     setOpenPayslips(true);
     try {
-      const response = await apiClient.get<PageResponse<Payslip>>(`/payroll-runs/${runId}/payslips`, {
+      const response = await apiClient.get<Payslip[] | PageResponse<Payslip>>(`/payroll-runs/${runId}/payslips`, {
         params: { page: 0, size: 200 }
       });
-      setPayslips(response.data.items ?? []);
+      setPayslips(Array.isArray(response.data) ? response.data : response.data.items ?? []);
     } catch {
       setPayslips([]);
     }
@@ -131,7 +133,9 @@ export default function PayrollPage() {
     {
       title: "Kỳ lương",
       dataIndex: "id",
-      render: (value: string) => value.slice(0, 8)
+      render: (value: string, row) => (
+        row.periodFrom && row.periodTo ? `${row.periodFrom} - ${row.periodTo}` : value.slice(0, 8)
+      )
     },
     {
       title: "Trạng thái",

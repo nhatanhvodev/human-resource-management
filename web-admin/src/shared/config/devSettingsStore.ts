@@ -6,7 +6,7 @@ export type DevSettings = {
 const TOKEN_KEY = "hrms.dev.token";
 const TENANT_KEY = "hrms.dev.tenant";
 const DEFAULT_LOCAL_TOKEN = "local-test-token";
-const DEFAULT_LOCAL_TENANT = "tenant-demo";
+const DEFAULT_LOCAL_TENANT = "default";
 export const DEV_SETTINGS_CHANGED = "hrms.dev.settings.changed";
 
 function readStorage(key: string, fallback = ""): string {

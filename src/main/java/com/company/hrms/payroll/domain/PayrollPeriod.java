@@ -45,6 +45,14 @@ public class PayrollPeriod extends AuditableEntity {
         return id;
     }
 
+    public LocalDate getPeriodFrom() {
+        return periodFrom;
+    }
+
+    public LocalDate getPeriodTo() {
+        return periodTo;
+    }
+
     public PayrollPeriodStatus getStatus() {
         return status;
     }

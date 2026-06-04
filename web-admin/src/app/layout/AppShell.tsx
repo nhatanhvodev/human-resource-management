@@ -18,13 +18,13 @@ const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
 
 const navItems = [
-  { key: "/dashboard", icon: <DashboardOutlined />, label: "Dashboard" },
-  { key: "/departments", icon: <TeamOutlined />, label: "Departments" },
-  { key: "/employees", icon: <UserOutlined />, label: "Employees" },
-  { key: "/recruitment", icon: <SolutionOutlined />, label: "Recruitment" },
-  { key: "/leave", icon: <CalendarOutlined />, label: "Leave" },
-  { key: "/payroll", icon: <WalletOutlined />, label: "Payroll" },
-  { key: "/settings", icon: <SettingOutlined />, label: "Settings" }
+  { key: "/dashboard", icon: <DashboardOutlined />, label: "Tổng quan" },
+  { key: "/departments", icon: <TeamOutlined />, label: "Phòng ban" },
+  { key: "/employees", icon: <UserOutlined />, label: "Nhân viên" },
+  { key: "/recruitment", icon: <SolutionOutlined />, label: "Tuyển dụng" },
+  { key: "/leave", icon: <CalendarOutlined />, label: "Nghỉ phép" },
+  { key: "/payroll", icon: <WalletOutlined />, label: "Bảng lương" },
+  { key: "/settings", icon: <SettingOutlined />, label: "Thiết lập dev" }
 ];
 
 export function AppShell() {
@@ -54,7 +54,7 @@ export function AppShell() {
   return (
     <Layout className="app-shell">
       <Sider className="app-shell__sider" width={232} theme="light" breakpoint="lg" collapsedWidth={0} trigger={null}>
-        <div className="app-shell__brand">HRMS Admin</div>
+        <div className="app-shell__brand">Quản trị nhân sự</div>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
@@ -69,17 +69,19 @@ export function AppShell() {
               className="app-shell__menu-button"
               type="text"
               icon={<MenuOutlined />}
-              aria-label="Open navigation"
+              aria-label="Mở điều hướng"
               onClick={() => setMobileNavOpen(true)}
             />
-            <Text strong>Admin workspace</Text>
+            <Text strong>Không gian quản trị</Text>
           </div>
           <div className="app-shell__status">
-            <Tag color={devSettings.tenantId ? "blue" : "default"}>
-              Tenant: {devSettings.tenantId || "not set"}
+            <Tag className="app-shell__status-tag" color={devSettings.tenantId ? "blue" : "default"} title={`Mã đơn vị: ${devSettings.tenantId || "chưa thiết lập"}`}>
+              <span className="app-shell__status-full">Mã đơn vị: {devSettings.tenantId || "chưa thiết lập"}</span>
+              <span className="app-shell__status-short">Đơn vị {devSettings.tenantId || "?"}</span>
             </Tag>
-            <Tag color={devSettings.token ? "green" : "gold"}>
-              Token: {devSettings.token ? "set" : "missing"}
+            <Tag className="app-shell__status-tag" color={devSettings.token ? "green" : "gold"} title={`Token: ${devSettings.token ? "đã có" : "thiếu"}`}>
+              <span className="app-shell__status-full">Token: {devSettings.token ? "đã có" : "thiếu"}</span>
+              <span className="app-shell__status-short">Token {devSettings.token ? "OK" : "thiếu"}</span>
             </Tag>
           </div>
         </Header>
@@ -89,7 +91,7 @@ export function AppShell() {
       </Layout>
       <Drawer
         className="app-shell__mobile-nav"
-        title="HRMS Admin"
+        title="Quản trị nhân sự"
         placement="left"
         width={260}
         open={mobileNavOpen}

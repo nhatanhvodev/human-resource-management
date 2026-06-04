@@ -42,4 +42,8 @@ public class PayrollRun extends AuditableEntity {
     public UUID getId() {
         return id;
     }
+
+    public PayrollRunStatus getStatus() {
+        return status;
+    }
 }

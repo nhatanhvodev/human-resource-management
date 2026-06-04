@@ -48,7 +48,7 @@ class DashboardApiIT {
                 .header("X-Tenant-Id", "tenant-a")
                 .with(jwt().authorities(new SimpleGrantedAuthority("dashboard:read"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.employees").isNumber())
+            .andExpect(jsonPath("$.totalEmployees").isNumber())
             .andExpect(jsonPath("$.departments").isNumber());
     }
 
@@ -108,14 +108,14 @@ class DashboardApiIT {
                 .header("X-Tenant-Id", "tenant-dashboard-summary-a")
                 .with(jwt().authorities(new SimpleGrantedAuthority("dashboard:read"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.employees").value(1))
+            .andExpect(jsonPath("$.totalEmployees").value(1))
             .andExpect(jsonPath("$.departments").value(1));
 
         mvc.perform(get("/api/v1/dashboard/summary")
                 .header("X-Tenant-Id", "tenant-dashboard-summary-b")
                 .with(jwt().authorities(new SimpleGrantedAuthority("dashboard:read"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.employees").value(0))
+            .andExpect(jsonPath("$.totalEmployees").value(0))
             .andExpect(jsonPath("$.departments").value(0));
     }
 
