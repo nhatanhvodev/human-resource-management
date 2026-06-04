@@ -6,6 +6,13 @@ import {
   SolutionOutlined,
   CalendarOutlined,
   WalletOutlined,
+  ClockCircleOutlined,
+  FileOutlined,
+  CompassOutlined,
+  BookOutlined,
+  ToolOutlined,
+  NotificationOutlined,
+  AuditOutlined,
   MenuOutlined
 } from "@ant-design/icons";
 import { Button, Drawer, Layout, Menu, Tag, Typography } from "antd";
@@ -24,10 +31,18 @@ const navItems = [
   { key: "/recruitment", icon: <SolutionOutlined />, label: "Tuyển dụng" },
   { key: "/leave", icon: <CalendarOutlined />, label: "Nghỉ phép" },
   { key: "/payroll", icon: <WalletOutlined />, label: "Bảng lương" },
-  { key: "/settings", icon: <SettingOutlined />, label: "Thiết lập dev" }
+  { key: "/performance", icon: <SolutionOutlined />, label: "Đánh giá" },
+  { key: "/attendance", icon: <ClockCircleOutlined />, label: "Chấm công" },
+  { key: "/documents", icon: <FileOutlined />, label: "Tài liệu" },
+  { key: "/onboarding", icon: <CompassOutlined />, label: "Onboarding" },
+  { key: "/training", icon: <BookOutlined />, label: "Đào tạo" },
+  { key: "/assets", icon: <ToolOutlined />, label: "Tài sản" },
+  { key: "/announcements", icon: <NotificationOutlined />, label: "Thông báo" },
+  { key: "/audit", icon: <AuditOutlined />, label: "Nhật ký" },
+  { key: "/settings", icon: <SettingOutlined />, label: "Thiết lập" }
 ];
 
-export function AppShell() {
+export function AdminShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
