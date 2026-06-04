@@ -2,7 +2,10 @@ package com.company.hrms.employee.application;
 
 import com.company.hrms.employee.domain.Employee;
 import com.company.hrms.employee.domain.EmploymentStatus;
+import com.company.hrms.employee.domain.Gender;
+import com.company.hrms.employee.domain.Position;
 import com.company.hrms.employee.infrastructure.EmployeeRepository;
+import com.company.hrms.employee.infrastructure.PositionRepository;
 import com.company.hrms.organization.domain.Department;
 import com.company.hrms.organization.infrastructure.DepartmentRepository;
 import com.company.hrms.shared.exception.ConflictException;
@@ -20,11 +23,14 @@ import java.util.UUID;
 public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
+    private final PositionRepository positionRepository;
 
     public EmployeeService(EmployeeRepository employeeRepository,
-                           DepartmentRepository departmentRepository) {
+                           DepartmentRepository departmentRepository,
+                           PositionRepository positionRepository) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
+        this.positionRepository = positionRepository;
     }
 
     @Transactional
@@ -36,13 +42,7 @@ public class EmployeeService {
         Department department = departmentRepository.findByIdAndTenantId(departmentId, tenantId)
             .orElseThrow(() -> new IllegalArgumentException("DEPARTMENT_NOT_FOUND"));
         Employee employee = new Employee(
-            UUID.randomUUID(),
-            tenantId,
-            employeeNo,
-            fullName,
-            department,
-            hireDate,
-            EmploymentStatus.ACTIVE
+            UUID.randomUUID(), tenantId, employeeNo, fullName, department, hireDate, EmploymentStatus.ACTIVE
         );
         return employeeRepository.save(employee);
     }
@@ -57,16 +57,13 @@ public class EmployeeService {
             EmploymentStatus employmentStatus = parseStatus(normalizedStatus);
             if (normalizedQuery != null && !normalizedQuery.isEmpty()) {
                 return employeeRepository.findByTenantIdAndEmploymentStatusAndFullNameContainingIgnoreCase(
-                    tenantId, employmentStatus, normalizedQuery, pageable
-                );
+                    tenantId, employmentStatus, normalizedQuery, pageable);
             }
             return employeeRepository.findByTenantIdAndEmploymentStatus(tenantId, employmentStatus, pageable);
         }
-
         if (normalizedQuery != null && !normalizedQuery.isEmpty()) {
             return employeeRepository.findByTenantIdAndFullNameContainingIgnoreCase(tenantId, normalizedQuery, pageable);
         }
-
         return employeeRepository.findAllByTenantId(tenantId, pageable);
     }
 
@@ -84,6 +81,31 @@ public class EmployeeService {
         Department department = departmentRepository.findByIdAndTenantId(departmentId, tenantId)
             .orElseThrow(() -> new IllegalArgumentException("DEPARTMENT_NOT_FOUND"));
         employee.updateProfile(fullName, department, hireDate);
+        return employee;
+    }
+
+    @Transactional
+    public Employee updateExtended(UUID id, String fullName, UUID departmentId, LocalDate hireDate,
+                                    String email, String phone, UUID positionId, LocalDate dateOfBirth,
+                                    String gender, String nationalId, String address,
+                                    String bankAccount, String taxCode) {
+        String tenantId = TenantContext.get();
+        Employee employee = employeeRepository.findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));
+        Department department = departmentRepository.findByIdAndTenantId(departmentId, tenantId)
+            .orElseThrow(() -> new IllegalArgumentException("DEPARTMENT_NOT_FOUND"));
+        employee.updateProfile(fullName, department, hireDate);
+
+        Position position = null;
+        if (positionId != null) {
+            position = positionRepository.findByIdAndTenantId(positionId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("POSITION_NOT_FOUND"));
+        }
+        Gender genderEnum = null;
+        if (gender != null && !gender.isEmpty()) {
+            genderEnum = Gender.valueOf(gender.toUpperCase(Locale.ROOT));
+        }
+        employee.updateExtendedProfile(email, phone, position, dateOfBirth, genderEnum, nationalId, address, bankAccount, taxCode);
         return employee;
     }
 

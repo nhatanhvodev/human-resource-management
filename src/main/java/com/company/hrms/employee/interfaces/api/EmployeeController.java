@@ -54,10 +54,7 @@ public class EmployeeController {
     @PreAuthorize("hasAuthority('employee:create')")
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request) {
         return toResponse(employeeService.create(
-            request.employeeNo(),
-            request.fullName(),
-            request.departmentId(),
-            request.hireDate()
+            request.employeeNo(), request.fullName(), request.departmentId(), request.hireDate()
         ));
     }
 
@@ -65,10 +62,18 @@ public class EmployeeController {
     @PreAuthorize("hasAuthority('employee:update')")
     public EmployeeResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateEmployeeRequest request) {
         return toResponse(employeeService.update(
-            id,
-            request.fullName(),
-            request.departmentId(),
-            request.hireDate()
+            id, request.fullName(), request.departmentId(), request.hireDate()
+        ));
+    }
+
+    @PutMapping("/{id}/profile")
+    @PreAuthorize("hasAuthority('employee:update')")
+    public EmployeeResponse updateExtended(@PathVariable UUID id, @Valid @RequestBody UpdateExtendedRequest request) {
+        return toResponse(employeeService.updateExtended(
+            id, request.fullName(), request.departmentId(), request.hireDate(),
+            request.email(), request.phone(), request.positionId(), request.dateOfBirth(),
+            request.gender(), request.nationalId(), request.address(),
+            request.bankAccount(), request.taxCode()
         ));
     }
 
@@ -78,36 +83,36 @@ public class EmployeeController {
         return toResponse(employeeService.changeStatus(id, request.employmentStatus()));
     }
 
-    private static EmployeeResponse toResponse(Employee employee) {
+    private static EmployeeResponse toResponse(Employee e) {
         return new EmployeeResponse(
-            employee.getId(),
-            employee.getEmployeeNo(),
-            employee.getFullName(),
-            employee.getDepartment().getId(),
-            employee.getEmploymentStatus().name(),
-            employee.getHireDate()
+            e.getId(), e.getEmployeeNo(), e.getFullName(),
+            e.getDepartment().getId(), e.getEmploymentStatus().name(), e.getHireDate(),
+            e.getEmail(), e.getPhone(),
+            e.getPosition() != null ? e.getPosition().getId() : null,
+            e.getPosition() != null ? e.getPosition().getTitle() : null,
+            e.getDateOfBirth(), e.getGender() != null ? e.getGender().name() : null,
+            e.getNationalId(), e.getAddress(), e.getBankAccount(), e.getTaxCode()
         );
     }
 
-    public record CreateEmployeeRequest(@NotBlank String employeeNo,
-                                        @NotBlank String fullName,
-                                        @NotNull UUID departmentId,
-                                        @NotNull LocalDate hireDate) {
-    }
+    public record CreateEmployeeRequest(@NotBlank String employeeNo, @NotBlank String fullName,
+                                        @NotNull UUID departmentId, @NotNull LocalDate hireDate) {}
 
-    public record UpdateEmployeeRequest(@NotBlank String fullName,
-                                        @NotNull UUID departmentId,
-                                        @NotNull LocalDate hireDate) {
-    }
+    public record UpdateEmployeeRequest(@NotBlank String fullName, @NotNull UUID departmentId,
+                                        @NotNull LocalDate hireDate) {}
 
-    public record UpdateStatusRequest(@NotNull EmploymentStatus employmentStatus) {
-    }
+    public record UpdateExtendedRequest(@NotBlank String fullName, @NotNull UUID departmentId,
+                                         @NotNull LocalDate hireDate, String email, String phone,
+                                         UUID positionId, LocalDate dateOfBirth, String gender,
+                                         String nationalId, String address,
+                                         String bankAccount, String taxCode) {}
 
-    public record EmployeeResponse(UUID id,
-                                   String employeeNo,
-                                   String fullName,
-                                   UUID departmentId,
-                                   String employmentStatus,
-                                   LocalDate hireDate) {
-    }
+    public record UpdateStatusRequest(@NotNull EmploymentStatus employmentStatus) {}
+
+    public record EmployeeResponse(UUID id, String employeeNo, String fullName,
+                                    UUID departmentId, String employmentStatus, LocalDate hireDate,
+                                    String email, String phone, UUID positionId, String positionTitle,
+                                    LocalDate dateOfBirth, String gender,
+                                    String nationalId, String address,
+                                    String bankAccount, String taxCode) {}
 }
