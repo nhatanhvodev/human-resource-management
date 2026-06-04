@@ -17,7 +17,9 @@ class ModuleBoundariesTest {
             "recruitment",
             "attendance",
             "payroll",
+            "performance",
             "reporting",
+            "selfservice",
             "integration",
             "audit"
     );
