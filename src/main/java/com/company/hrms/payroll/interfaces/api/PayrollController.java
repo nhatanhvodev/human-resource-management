@@ -3,20 +3,18 @@ package com.company.hrms.payroll.interfaces.api;
 import com.company.hrms.payroll.application.PayrollService;
 import com.company.hrms.payroll.domain.PayrollPeriod;
 import com.company.hrms.payroll.domain.PayrollRun;
+import com.company.hrms.payroll.domain.Payslip;
 import com.company.hrms.shared.interfaces.api.PageResponse;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -68,12 +66,23 @@ public class PayrollController {
         return new PayrollPeriodResponse(period.getId(), period.getStatus().name());
     }
 
-    public record CreatePeriodRequest(@NotNull LocalDate fromDate, @NotNull LocalDate toDate) {
+    @GetMapping("/payroll-runs/{runId}/payslips")
+    @PreAuthorize("hasAuthority('payroll:read')")
+    public List<PayslipResponse> payslipsByRun(@PathVariable UUID runId) {
+        return payrollService.getPayslipsByRun(runId).stream()
+            .map(PayrollController::toPayslipResponse)
+            .toList();
     }
 
-    public record PayrollPeriodResponse(UUID id, String status) {
+    private static PayslipResponse toPayslipResponse(Payslip p) {
+        return new PayslipResponse(p.getId(), p.getPayrollRun().getId(), p.getEmployee().getId(),
+            p.getBasicSalary(), p.getAllowance(), p.getDeduction(), p.getOvertimePay(), p.getNetPay(), p.getIssuedAt());
     }
 
-    public record PayrollRunResponse(UUID id) {
-    }
+    public record CreatePeriodRequest(@NotNull LocalDate fromDate, @NotNull LocalDate toDate) {}
+    public record PayrollPeriodResponse(UUID id, String status) {}
+    public record PayrollRunResponse(UUID id) {}
+    public record PayslipResponse(UUID id, UUID payrollRunId, UUID employeeId, BigDecimal basicSalary,
+                                   BigDecimal allowance, BigDecimal deduction, BigDecimal overtimePay,
+                                   BigDecimal netPay, Instant issuedAt) {}
 }
