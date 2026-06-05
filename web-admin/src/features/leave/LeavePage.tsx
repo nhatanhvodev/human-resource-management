@@ -2,6 +2,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -57,6 +58,7 @@ type OvertimeRecord = {
 };
 
 export default function LeavePage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<LeaveRequest[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,11 +89,11 @@ export default function LeavePage() {
       });
       setItems(response.data.items ?? []);
     } catch {
-      setError("Không tải được danh sách nghỉ phép. Kiểm tra token, tenant và kết nối backend.");
+      setError(t("pages.leave.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -177,7 +179,7 @@ export default function LeavePage() {
       setOpenCreate(false);
       await loadLeaveRequests();
     } catch {
-      setError("Không tạo được đơn nghỉ phép. Kiểm tra nhân viên và khoảng ngày.");
+      setError(t("pages.leave.createError"));
     } finally {
       setSaving(false);
     }
@@ -190,7 +192,7 @@ export default function LeavePage() {
       await apiClient.post(`/leave-requests/${id}/${action}`);
       await loadLeaveRequests();
     } catch {
-      setError(action === "approve" ? "Không duyệt được đơn nghỉ phép." : "Không từ chối được đơn nghỉ phép.");
+      setError(action === "approve" ? t("pages.leave.approveError") : t("pages.leave.rejectError"));
     } finally {
       setSaving(false);
     }
@@ -203,7 +205,7 @@ export default function LeavePage() {
       await apiClient.post(`/overtime/${id}/${action}`);
       await loadOvertime();
     } catch {
-      setError(action === "approve" ? "Không duyệt được đơn tăng ca." : "Không từ chối được đơn tăng ca.");
+      setError(action === "approve" ? t("pages.leave.overtimeApproveError") : t("pages.leave.overtimeRejectError"));
     } finally {
       setSaving(false);
     }
@@ -212,7 +214,7 @@ export default function LeavePage() {
   const requestColumns = useMemo<ColumnsType<LeaveRequest>>(
     () => [
       {
-        title: "Nhân viên",
+        title: t("common.employee"),
         dataIndex: "employeeName",
         render: (value: string | undefined, row) => {
           const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
@@ -220,31 +222,31 @@ export default function LeavePage() {
         }
       },
       {
-        title: "Loại nghỉ",
+        title: t("pages.leave.requestType"),
         dataIndex: "leaveType",
         width: 160,
-        render: (value?: string) => value ?? "Chưa có dữ liệu từ API"
+        render: (value?: string) => value ?? t("pages.leave.missingApiData")
       },
       {
-        title: "Từ ngày",
+        title: t("common.fromDate"),
         dataIndex: "fromDate",
         width: 150,
         render: (value: string | undefined, row) => value ?? row.startDate
       },
       {
-        title: "Đến ngày",
+        title: t("common.toDate"),
         dataIndex: "toDate",
         width: 150,
         render: (value: string | undefined, row) => value ?? row.endDate
       },
       {
-        title: "Trạng thái",
+        title: t("common.status"),
         dataIndex: "status",
         width: 160,
         render: (value: string) => <StatusTag value={value} />
       },
       {
-        title: "Thao tác",
+        title: t("common.actions"),
         key: "actions",
         width: 190,
         render: (_, row) => {
@@ -256,7 +258,7 @@ export default function LeavePage() {
                 disabled={!isPending || saving}
                 onClick={() => void transitionLeaveRequest(row.id, "approve")}
               >
-                Duyệt
+                {t("common.approve")}
               </Button>
               <Button
                 size="small"
@@ -264,20 +266,20 @@ export default function LeavePage() {
                 disabled={!isPending || saving}
                 onClick={() => void transitionLeaveRequest(row.id, "reject")}
               >
-                Từ chối
+                {t("common.reject")}
               </Button>
             </Space>
           );
         }
       }
     ],
-    [employeeById, saving]
+    [employeeById, saving, t]
   );
 
   const balanceColumns = useMemo<ColumnsType<LeaveBalance>>(
     () => [
       {
-        title: "Nhân viên",
+        title: t("common.employee"),
         dataIndex: "employeeName",
         render: (value: string | undefined, row) => {
           const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
@@ -285,65 +287,65 @@ export default function LeavePage() {
         }
       },
       {
-        title: "Loại phép",
+        title: t("pages.leave.balanceType"),
         dataIndex: "leaveType",
         width: 160
       },
       {
-        title: "Năm",
+        title: t("pages.leave.year"),
         dataIndex: "year",
         width: 80
       },
       {
-        title: "Tổng số ngày",
+        title: t("pages.leave.totalDays"),
         dataIndex: "totalDays",
         width: 130
       },
       {
-        title: "Đã dùng",
+        title: t("pages.leave.usedDays"),
         dataIndex: "usedDays",
         width: 100
       },
       {
-        title: "Chờ duyệt",
+        title: t("pages.leave.pendingDays"),
         dataIndex: "pendingDays",
         width: 110
       }
     ],
-    [employeeById]
+    [employeeById, t]
   );
 
   const holidayColumns = useMemo<ColumnsType<Holiday>>(
     () => [
       {
-        title: "Tên ngày lễ",
+        title: t("pages.leave.holidayName"),
         dataIndex: "name",
         width: 220
       },
       {
-        title: "Ngày",
+        title: t("common.date"),
         dataIndex: "date",
         width: 150
       },
       {
-        title: "Mô tả",
+        title: t("common.description"),
         dataIndex: "description",
         render: (value?: string) => value ?? "-"
       },
       {
-        title: "Lặp lại hàng năm",
+        title: t("pages.leave.recurringYearly"),
         dataIndex: "isRecurringYearly",
         width: 160,
-        render: (value: boolean) => (value ? "Có" : "Không")
+        render: (value: boolean) => (value ? t("pages.leave.yes") : t("pages.leave.no"))
       }
     ],
-    []
+    [t]
   );
 
   const overtimeColumns = useMemo<ColumnsType<OvertimeRecord>>(
     () => [
       {
-        title: "Nhân viên",
+        title: t("common.employee"),
         dataIndex: "employeeName",
         render: (value: string | undefined, row) => {
           const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
@@ -351,23 +353,23 @@ export default function LeavePage() {
         }
       },
       {
-        title: "Ngày",
+        title: t("common.date"),
         dataIndex: "date",
         width: 150
       },
       {
-        title: "Số giờ",
+        title: t("pages.leave.hours"),
         dataIndex: "hours",
         width: 100
       },
       {
-        title: "Trạng thái",
+        title: t("common.status"),
         dataIndex: "status",
         width: 160,
         render: (value: string) => <StatusTag value={value} />
       },
       {
-        title: "Thao tác",
+        title: t("common.actions"),
         key: "actions",
         width: 190,
         render: (_, row) => {
@@ -379,7 +381,7 @@ export default function LeavePage() {
                 disabled={!isPending || saving}
                 onClick={() => void transitionOvertime(row.id, "approve")}
               >
-                Duyệt
+                {t("common.approve")}
               </Button>
               <Button
                 size="small"
@@ -387,26 +389,26 @@ export default function LeavePage() {
                 disabled={!isPending || saving}
                 onClick={() => void transitionOvertime(row.id, "reject")}
               >
-                Từ chối
+                {t("common.reject")}
               </Button>
             </Space>
           );
         }
       }
     ],
-    [employeeById, saving]
+    [employeeById, saving, t]
   );
 
   const tabItems = [
     {
       key: "requests",
-      label: "Đơn nghỉ phép",
+      label: t("pages.leave.requests"),
       children: (
         <>
           <PageToolbar>
             <Space />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
-              Tạo đơn nghỉ phép
+              {t("pages.leave.createRequest")}
             </Button>
           </PageToolbar>
 
@@ -424,7 +426,7 @@ export default function LeavePage() {
     },
     {
       key: "balances",
-      label: "Số dư phép",
+      label: t("pages.leave.balances"),
       children: (
         <AppTable<LeaveBalance>
           rowKey="id"
@@ -437,7 +439,7 @@ export default function LeavePage() {
     },
     {
       key: "holidays",
-      label: "Ngày lễ",
+      label: t("pages.leave.holidays"),
       children: (
         <AppTable<Holiday>
           rowKey="id"
@@ -450,7 +452,7 @@ export default function LeavePage() {
     },
     {
       key: "overtime",
-      label: "Tăng ca",
+      label: t("pages.leave.overtime"),
       children: (
         <>
           {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
@@ -470,32 +472,32 @@ export default function LeavePage() {
   return (
     <>
       <div className="page-header">
-        <h1>Nghỉ phép</h1>
-        <p>Rà soát đơn nghỉ phép và xử lý quyết định duyệt hoặc từ chối.</p>
+        <h1>{t("pages.leave.title")}</h1>
+        <p>{t("pages.leave.subtitle")}</p>
       </div>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
 
-      <FormDrawer open={openCreate} title="Tạo đơn nghỉ phép" onClose={() => setOpenCreate(false)}>
+      <FormDrawer open={openCreate} title={t("pages.leave.createRequest")} onClose={() => setOpenCreate(false)}>
         <Form form={form} layout="vertical" onFinish={createLeaveRequest}>
-          <Form.Item label="Nhân viên" name="employeeId" htmlFor="leave-employee" rules={[{ required: true, message: "Chọn nhân viên" }]}>
+          <Form.Item label={t("common.employee")} name="employeeId" htmlFor="leave-employee" rules={[{ required: true, message: t("pages.leave.selectEmployee") }]}>
             <Select
               id="leave-employee"
-              placeholder="Chọn nhân viên"
+              placeholder={t("pages.leave.selectEmployee")}
               options={employees.map((employee) => ({
                 value: employee.id,
                 label: `${employee.employeeNo} - ${employee.fullName}`
               }))}
             />
           </Form.Item>
-          <Form.Item label="Từ ngày" name="fromDate" htmlFor="leave-start" rules={[{ required: true, message: "Chọn ngày bắt đầu" }]}>
+          <Form.Item label={t("common.fromDate")} name="fromDate" htmlFor="leave-start" rules={[{ required: true, message: t("pages.leave.selectStartDate") }]}>
             <Input id="leave-start" type="date" />
           </Form.Item>
-          <Form.Item label="Đến ngày" name="toDate" htmlFor="leave-end" rules={[{ required: true, message: "Chọn ngày kết thúc" }]}>
+          <Form.Item label={t("common.toDate")} name="toDate" htmlFor="leave-end" rules={[{ required: true, message: t("pages.leave.selectEndDate") }]}>
             <Input id="leave-end" type="date" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving} disabled={!employees.length}>
-            Lưu đơn
+            {t("pages.leave.saveRequest")}
           </Button>
         </Form>
       </FormDrawer>

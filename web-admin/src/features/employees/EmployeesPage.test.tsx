@@ -51,7 +51,7 @@ describe("EmployeesPage", () => {
             }
           ],
           page: 0,
-          size: 10,
+          size: 20,
           totalItems: 1,
           totalPages: 1
         }
@@ -66,7 +66,7 @@ describe("EmployeesPage", () => {
 
     expect(await screen.findByText("Nguyễn Văn A")).toBeInTheDocument();
     expect(mocks.apiGet).toHaveBeenLastCalledWith("/employees", {
-      params: expect.objectContaining({ status: "ACTIVE" })
+      params: expect.objectContaining({ size: 20, status: "ACTIVE" })
     });
   });
 
@@ -75,6 +75,18 @@ describe("EmployeesPage", () => {
 
     expect(await screen.findByText("Nguyễn Văn A")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Chi tiết/i }));
+
+    await waitFor(() => {
+      expect(mocks.apiGet).toHaveBeenCalledWith("/employees/emp-1/contracts", {
+        params: { page: 0, size: 50 }
+      });
+      expect(mocks.apiGet).toHaveBeenCalledWith("/employees/emp-1/skills", {
+        params: { page: 0, size: 50 }
+      });
+      expect(mocks.apiGet).toHaveBeenCalledWith("/employees/emp-1/emergency-contacts", {
+        params: { page: 0, size: 50 }
+      });
+    });
 
     expect(screen.getByText("Chi tiết nhân viên")).toBeInTheDocument();
     expect(screen.getAllByText("E001").length).toBeGreaterThanOrEqual(2);

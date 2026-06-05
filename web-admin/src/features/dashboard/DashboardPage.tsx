@@ -2,6 +2,7 @@ import { Alert, Card, Col, Empty, Row, Skeleton, Statistic, Table, Typography } 
 import type { ColumnsType } from "antd/es/table";
 import ReactECharts from "echarts-for-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 
@@ -35,21 +36,10 @@ const defaultSummary: DashboardSummary = {
   openPayrollPeriods: 0, pendingLeaves: 0
 };
 
-const activityColumns: ColumnsType<DashboardActivity> = [
-  { title: "Loại", dataIndex: "type", width: 180 },
-  { title: "Nội dung", dataIndex: "message" },
-  { title: "Thời gian", dataIndex: "timestamp", width: 220 }
-];
-
 const { Text } = Typography;
 
-const activityEmptyText = (
-  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE}
-    description={<div className="dashboard-empty"><Text strong>Không có hoạt động gần đây</Text>
-    <Text type="secondary">Các sự kiện vận hành mới sẽ xuất hiện tại đây.</Text></div>} />
-);
-
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState<DashboardSummary>(defaultSummary);
   const [activities, setActivities] = useState<DashboardActivity[]>([]);
   const [headcounts, setHeadcounts] = useState<DepartmentHeadcount[]>([]);
@@ -76,18 +66,30 @@ export default function DashboardPage() {
           setDistribution(Array.isArray(distR.data) ? distR.data : []);
         }
       } catch {
-        if (mounted) setError("Không tải được dữ liệu tổng quan");
+        if (mounted) setError(t("pages.dashboard.loadError"));
       } finally {
         if (mounted) setLoading(false);
       }
     }
     void load();
     return () => { mounted = false; };
-  }, []);
+  }, [t]);
+
+  const activityColumns: ColumnsType<DashboardActivity> = [
+    { title: t("pages.dashboard.activityType"), dataIndex: "type", width: 180 },
+    { title: t("pages.dashboard.activityMessage"), dataIndex: "message" },
+    { title: t("pages.dashboard.activityTime"), dataIndex: "timestamp", width: 220 }
+  ];
+
+  const activityEmptyText = (
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE}
+      description={<div className="dashboard-empty"><Text strong>{t("pages.dashboard.activityEmptyTitle")}</Text>
+      <Text type="secondary">{t("pages.dashboard.activityEmptyDescription")}</Text></div>} />
+  );
 
   const pieOption = {
     tooltip: { trigger: 'item' as const },
-    legend: { bottom: 0 },
+    legend: { show: false },
     series: [{
       type: 'pie', radius: ['40%', '70%'],
       data: distribution.map(d => ({ name: d.name, value: d.count })),
@@ -108,26 +110,26 @@ export default function DashboardPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Tổng quan</h1>
-        <p>Tóm tắt vận hành cho hệ thống quản trị nhân sự.</p>
+        <h1>{t("pages.dashboard.title")}</h1>
+        <p>{t("pages.dashboard.subtitle")}</p>
       </div>
 
       {error && <Alert type="warning" showIcon message={error}
-        description="Kiểm tra token, tenant và kết nối backend rồi tải lại trang."
+        description={t("pages.dashboard.loadErrorDescription")}
         style={{ marginBottom: 16 }} />}
 
       <Row gutter={[16, 16]} className="summary-grid">
         <Col xs={24} sm={12} lg={4}>
           <Card className="summary-card">
             <Skeleton loading={loading} active paragraph={false}>
-              <Statistic title="Tổng nhân viên" value={summary.totalEmployees} />
+              <Statistic title={t("pages.dashboard.totalEmployees")} value={summary.totalEmployees} />
             </Skeleton>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={4}>
           <Card className="summary-card">
             <Skeleton loading={loading} active paragraph={false}>
-              <Statistic title="Đang làm việc" value={summary.activeEmployees}
+              <Statistic title={t("pages.dashboard.activeEmployees")} value={summary.activeEmployees}
                 valueStyle={{ color: '#3f8600' }} />
             </Skeleton>
           </Card>
@@ -135,21 +137,21 @@ export default function DashboardPage() {
         <Col xs={24} sm={12} lg={4}>
           <Card className="summary-card">
             <Skeleton loading={loading} active paragraph={false}>
-              <Statistic title="Phòng ban" value={summary.departments} />
+              <Statistic title={t("pages.dashboard.departments")} value={summary.departments} />
             </Skeleton>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={4}>
           <Card className="summary-card">
             <Skeleton loading={loading} active paragraph={false}>
-              <Statistic title="Kỳ lương đang mở" value={summary.openPayrollPeriods} />
+              <Statistic title={t("pages.dashboard.openPayrollPeriods")} value={summary.openPayrollPeriods} />
             </Skeleton>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card className="summary-card">
             <Skeleton loading={loading} active paragraph={false}>
-              <Statistic title="Đơn nghỉ chờ duyệt" value={summary.pendingLeaves}
+              <Statistic title={t("pages.dashboard.pendingLeaves")} value={summary.pendingLeaves}
                 valueStyle={{ color: summary.pendingLeaves > 0 ? '#cf1322' : undefined }} />
             </Skeleton>
           </Card>
@@ -158,17 +160,17 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
-          <Card title="Phân bố nhân viên theo phòng ban">
+          <Card title={t("pages.dashboard.departmentDistribution")}>
             {distribution.length > 0
               ? <ReactECharts option={pieOption} style={{ height: 320 }} />
-              : <Empty description="Chưa có dữ liệu" />}
+              : <Empty description={t("pages.dashboard.noChartData")} />}
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Số lượng nhân viên theo phòng ban">
+          <Card title={t("pages.dashboard.departmentHeadcount")}>
             {headcounts.length > 0
               ? <ReactECharts option={barOption} style={{ height: 320 }} />
-              : <Empty description="Chưa có dữ liệu" />}
+              : <Empty description={t("pages.dashboard.noChartData")} />}
           </Card>
         </Col>
       </Row>

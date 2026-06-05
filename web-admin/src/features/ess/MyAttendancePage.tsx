@@ -1,8 +1,10 @@
-import { Button, Table, Tag, Typography } from 'antd';
+import { Button, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
 import { getEmployeeId } from '../../shared/auth/jwt';
+import { StatusTag } from '../../shared/ui/StatusTag';
 
 const { Title } = Typography;
 
@@ -12,6 +14,7 @@ type TimeEntry = {
 };
 
 export default function MyAttendancePage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,20 +50,20 @@ export default function MyAttendancePage() {
   };
 
   const cols: ColumnsType<TimeEntry> = [
-    { title: 'Ngày', dataIndex: 'date' },
-    { title: 'Vào', dataIndex: 'clockIn' },
-    { title: 'Ra', dataIndex: 'clockOut' },
-    { title: 'Phút', dataIndex: 'totalMinutes' },
-    { title: 'Trạng thái', dataIndex: 'status',
-      render: (s: string) => <Tag color={s === 'APPROVED' ? 'green' : 'gold'}>{s}</Tag> }
+    { title: t('common.date'), dataIndex: 'date' },
+    { title: t('pages.attendance.clockIn'), dataIndex: 'clockIn' },
+    { title: t('pages.attendance.clockOut'), dataIndex: 'clockOut' },
+    { title: t('pages.attendance.minutes'), dataIndex: 'totalMinutes' },
+    { title: t('common.status'), dataIndex: 'status',
+      render: (s: string) => <StatusTag value={s} /> }
   ];
 
   return (
     <div>
-      <div className="page-header"><Title level={3}>Chấm công</Title></div>
+      <div className="page-header"><Title level={3}>{t('nav.attendance')}</Title></div>
       <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
-        <Button type="primary" onClick={clockIn}>Vào ca</Button>
-        <Button onClick={clockOut}>Ra ca</Button>
+        <Button type="primary" onClick={clockIn}>{t('ess.clockIn')}</Button>
+        <Button onClick={clockOut}>{t('ess.clockOut')}</Button>
       </div>
       <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
     </div>

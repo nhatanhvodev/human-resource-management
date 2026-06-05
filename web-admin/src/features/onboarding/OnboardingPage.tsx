@@ -2,6 +2,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, InputNumber, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -16,6 +17,7 @@ type TemplateTask = { id: string; templateId: string; title: string; description
 type Employee = { id: string; employeeNo: string; fullName: string };
 
 export default function OnboardingPage() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateTasks, setTemplateTasks] = useState<Record<string, TemplateTask[]>>({});
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -34,11 +36,11 @@ export default function OnboardingPage() {
       const res = await apiClient.get<Template[]>("/onboarding/templates");
       setTemplates(res.data);
     } catch {
-      setError("Không tải được danh sách template.");
+      setError(t("pages.onboarding.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -64,14 +66,14 @@ export default function OnboardingPage() {
       form.resetFields();
       setOpenCreateTemplate(false);
       await loadTemplates();
-    } catch { setError("Không tạo được template."); }
+    } catch { setError(t("pages.onboarding.createError")); }
     finally { setSaving(false); }
   };
 
   const deleteTemplate = async (id: string) => {
     setSaving(true);
     try { await apiClient.delete(`/onboarding/templates/${id}`); await loadTemplates(); }
-    catch { setError("Không xoá được template."); }
+    catch { setError(t("pages.onboarding.deleteError")); }
     finally { setSaving(false); }
   };
 
@@ -81,56 +83,56 @@ export default function OnboardingPage() {
       await apiClient.post("/onboarding/start", values);
       form.resetFields();
       setOpenStart(false);
-    } catch { setError("Không khởi tạo được onboarding."); }
+    } catch { setError(t("pages.onboarding.startError")); }
     finally { setSaving(false); }
   };
 
   const templateColumns = useMemo<ColumnsType<Template>>(() => [
-    { title: "Tên", dataIndex: "name" },
-    { title: "Mô tả", dataIndex: "description", render: (v: string) => v ?? "-" },
+    { title: t("common.name"), dataIndex: "name" },
+    { title: t("common.description"), dataIndex: "description", render: (v: string) => v ?? "-" },
     {
-      title: "Số task", key: "count", width: 100,
+      title: t("pages.onboarding.taskCount"), key: "count", width: 100,
       render: (_, row) => templateTasks[row.id]?.length ?? 0
     },
     {
-      title: "Thao tác", key: "actions", width: 200,
+      title: t("common.actions"), key: "actions", width: 200,
       render: (_, row) => (
         <Space>
-          <Button size="small" onClick={() => void loadTemplateTasks(row.id)}>Xem task</Button>
+          <Button size="small" onClick={() => void loadTemplateTasks(row.id)}>{t("pages.onboarding.viewTasks")}</Button>
           <Button size="small" danger loading={saving}
-            onClick={() => void deleteTemplate(row.id)}>Xoá</Button>
+            onClick={() => void deleteTemplate(row.id)}>{t("common.delete")}</Button>
         </Space>
       )
     }
-  ], [templateTasks, saving]);
+  ], [templateTasks, saving, t]);
 
   return (
     <>
       <div className="page-header">
         <h1>Onboarding</h1>
-        <p>Quản lý template onboarding và khởi tạo quy trình cho nhân viên mới.</p>
+        <p>{t("pages.onboarding.subtitle")}</p>
       </div>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
         {
-          key: "templates", label: "Templates",
+          key: "templates", label: t("pages.onboarding.templates"),
           children: (
             <>
               <PageToolbar>
                 <Space />
                 <Button type="primary" icon={<PlusOutlined />}
-                  onClick={() => setOpenCreateTemplate(true)}>Tạo template</Button>
+                  onClick={() => setOpenCreateTemplate(true)}>{t("pages.onboarding.createTemplate")}</Button>
               </PageToolbar>
               {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
               <AppTable<Template> rowKey="id" loading={loading} columns={templateColumns} dataSource={templates} pagination={false} />
               {Object.entries(templateTasks).map(([id, tasks]) => (
                 <div key={id} style={{ marginTop: 16 }}>
-                  <h4>Tasks của template {templates.find(t => t.id === id)?.name ?? id.slice(0, 8)}</h4>
+                  <h4>{t("pages.onboarding.tasksForTemplate", { name: templates.find(t => t.id === id)?.name ?? id.slice(0, 8) })}</h4>
                   <AppTable<TemplateTask> rowKey="id" loading={false}
                     columns={[
-                      { title: "Thứ tự", dataIndex: "orderIndex", width: 80 },
-                      { title: "Tiêu đề", dataIndex: "title" },
-                      { title: "Mô tả", dataIndex: "description" }
+                      { title: t("pages.onboarding.order"), dataIndex: "orderIndex", width: 80 },
+                      { title: t("pages.announcements.announcementTitle"), dataIndex: "title" },
+                      { title: t("common.description"), dataIndex: "description" }
                     ]}
                     dataSource={tasks} pagination={false} />
                 </div>
@@ -139,36 +141,36 @@ export default function OnboardingPage() {
           )
         },
         {
-          key: "start", label: "Khởi tạo",
+          key: "start", label: t("pages.onboarding.start"),
           children: (
             <div style={{ padding: 24, maxWidth: 480 }}>
               <Form form={form} layout="vertical" onFinish={startOnboarding}>
-                <Form.Item label="Nhân viên" name="employeeId" rules={[{ required: true }]}>
-                  <Select placeholder="Chọn nhân viên" options={employees.map(e => ({ value: e.id, label: `${e.employeeNo} - ${e.fullName}` }))} />
+                <Form.Item label={t("common.employee")} name="employeeId" rules={[{ required: true }]}>
+                  <Select placeholder={t("pages.onboarding.selectEmployee")} options={employees.map(e => ({ value: e.id, label: `${e.employeeNo} - ${e.fullName}` }))} />
                 </Form.Item>
                 <Form.Item label="Template" name="templateId" rules={[{ required: true }]}>
-                  <Select placeholder="Chọn template" options={templates.map(t => ({ value: t.id, label: t.name }))} />
+                  <Select placeholder={t("pages.onboarding.selectTemplate")} options={templates.map(t => ({ value: t.id, label: t.name }))} />
                 </Form.Item>
-                <Button type="primary" htmlType="submit" loading={saving}>Khởi tạo</Button>
+                <Button type="primary" htmlType="submit" loading={saving}>{t("pages.onboarding.startOnboarding")}</Button>
               </Form>
             </div>
           )
         },
         {
-          key: "board", label: "Bảng theo dõi",
+          key: "board", label: t("pages.onboarding.board"),
           children: <OnboardingBoard />
         }
       ]} />
 
-      <FormDrawer open={openCreateTemplate} title="Tạo template" onClose={() => setOpenCreateTemplate(false)}>
+      <FormDrawer open={openCreateTemplate} title={t("pages.onboarding.createTemplate")} onClose={() => setOpenCreateTemplate(false)}>
         <Form form={form} layout="vertical" onFinish={createTemplate}>
-          <Form.Item label="Tên" name="name" rules={[{ required: true }]}>
+          <Form.Item label={t("common.name")} name="name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item label="Mô tả" name="description">
+          <Form.Item label={t("common.description")} name="description">
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Button type="primary" htmlType="submit" loading={saving}>Tạo</Button>
+          <Button type="primary" htmlType="submit" loading={saving}>{t("common.create")}</Button>
         </Form>
       </FormDrawer>
     </>

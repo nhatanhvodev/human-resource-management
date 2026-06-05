@@ -25,7 +25,7 @@ describe("DepartmentsPage", () => {
       data: {
         items: [{ id: "dept-1", code: "ENG", name: "Kỹ thuật" }],
         page: 0,
-        size: 10,
+        size: 20,
         totalItems: 1,
         totalPages: 1
       }
@@ -38,6 +38,9 @@ describe("DepartmentsPage", () => {
     render(<DepartmentsPage />);
 
     expect(await screen.findByText("Kỹ thuật")).toBeInTheDocument();
+    expect(mocks.apiGet).toHaveBeenCalledWith("/departments", {
+      params: { page: 0, size: 20, q: undefined }
+    });
     fireEvent.click(screen.getByRole("button", { name: /Thêm phòng ban/i }));
 
     expect(screen.getByLabelText(/Mã phòng ban/i)).toBeInTheDocument();

@@ -2,6 +2,7 @@ import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Alert, Button, Progress, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -13,6 +14,7 @@ type Enrollment = { id: string; courseId: string; employeeId: string; progress: 
 type Employee = { id: string; employeeNo: string; fullName: string };
 
 export default function CourseDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
@@ -42,48 +44,48 @@ export default function CourseDetailPage() {
 
   const columns = useMemo<ColumnsType<Enrollment>>(() => [
     {
-      title: "Nhân viên", dataIndex: "employeeId",
+      title: t("common.employee"), dataIndex: "employeeId",
       render: (v: string) => employeeById.get(v)?.fullName ?? v.slice(0, 8)
     },
     {
-      title: "Tiến độ", dataIndex: "progress", width: 200,
+      title: t("pages.training.progress"), dataIndex: "progress", width: 200,
       render: (v: number) => <Progress percent={v} size="small" />
     },
     {
-      title: "Trạng thái", dataIndex: "status", width: 130,
+      title: t("common.status"), dataIndex: "status", width: 130,
       render: (v: string) => <StatusTag value={v} />
     },
-    { title: "Ngày ghi danh", dataIndex: "enrolledAt", width: 180 }
-  ], [employeeById]);
+    { title: t("pages.training.enrolledAt"), dataIndex: "enrolledAt", width: 180 }
+  ], [employeeById, t]);
 
-  if (!course) return <Alert message="Không tìm thấy khoá học" type="warning" showIcon />;
+  if (!course) return <Alert message={t("pages.training.notFound")} type="warning" showIcon />;
 
   return (
     <>
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/training")} style={{ marginBottom: 16 }}>Quay lại</Button>
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/training")} style={{ marginBottom: 16 }}>{t("pages.training.back")}</Button>
       <div className="page-header">
         <h1>{course.title}</h1>
-        <p>{course.description ?? "Không có mô tả"}</p>
+        <p>{course.description ?? t("pages.training.noDescription")}</p>
       </div>
       <Tabs items={[
         {
-          key: "info", label: "Thông tin",
+          key: "info", label: t("pages.training.info"),
           children: (
             <div style={{ maxWidth: 480 }}>
               <table style={{ width: "100%" }}>
                 <tbody>
-                  <tr><td><strong>Danh mục</strong></td><td>{course.category ?? "-"}</td></tr>
-                  <tr><td><strong>Số giờ</strong></td><td>{course.durationHours ?? "-"}</td></tr>
-                  <tr><td><strong>Giảng viên</strong></td><td>{course.instructorName ?? "-"}</td></tr>
-                  <tr><td><strong>Từ ngày</strong></td><td>{course.startDate ?? "-"}</td></tr>
-                  <tr><td><strong>Đến ngày</strong></td><td>{course.endDate ?? "-"}</td></tr>
+                  <tr><td><strong>{t("pages.training.category")}</strong></td><td>{course.category ?? "-"}</td></tr>
+                  <tr><td><strong>{t("pages.training.durationHours")}</strong></td><td>{course.durationHours ?? "-"}</td></tr>
+                  <tr><td><strong>{t("pages.training.instructor")}</strong></td><td>{course.instructorName ?? "-"}</td></tr>
+                  <tr><td><strong>{t("common.fromDate")}</strong></td><td>{course.startDate ?? "-"}</td></tr>
+                  <tr><td><strong>{t("common.toDate")}</strong></td><td>{course.endDate ?? "-"}</td></tr>
                 </tbody>
               </table>
             </div>
           )
         },
         {
-          key: "enrollments", label: `Học viên (${enrollments.length})`,
+          key: "enrollments", label: t("pages.training.students", { count: enrollments.length }),
           children: <AppTable<Enrollment> rowKey="id" loading={loading} columns={columns} dataSource={enrollments} pagination={false} />
         }
       ]} />

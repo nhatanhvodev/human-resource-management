@@ -1,8 +1,10 @@
-import { Button, Table, Tag, Typography } from 'antd';
+import { Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
 import { getEmployeeId } from '../../shared/auth/jwt';
+import { StatusTag } from '../../shared/ui/StatusTag';
 
 const { Title } = Typography;
 
@@ -12,6 +14,7 @@ type OnboardingTask = {
 };
 
 export default function MyOnboardingPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<OnboardingTask[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,11 +33,11 @@ export default function MyOnboardingPage() {
   }, []);
 
   const cols: ColumnsType<OnboardingTask> = [
-    { title: 'Nhiệm vụ', dataIndex: 'title' },
-    { title: 'Mô tả', dataIndex: 'description' },
-    { title: 'Trạng thái', dataIndex: 'status',
-      render: (s: string) => <Tag color={s === 'DONE' ? 'green' : s === 'IN_PROGRESS' ? 'blue' : 'default'}>{s}</Tag> },
-    { title: 'Hoàn thành', dataIndex: 'completedAt' }
+    { title: t('ess.task'), dataIndex: 'title' },
+    { title: t('common.description'), dataIndex: 'description' },
+    { title: t('common.status'), dataIndex: 'status',
+      render: (s: string) => <StatusTag value={s} /> },
+    { title: t('ess.completedAt'), dataIndex: 'completedAt' }
   ];
 
   return (

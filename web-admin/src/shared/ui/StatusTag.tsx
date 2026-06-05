@@ -1,4 +1,5 @@
 import { Tag } from "antd";
+import { useTranslation } from "react-i18next";
 
 type StatusTagProps = {
   value: string;
@@ -21,23 +22,7 @@ const statusColors: Record<string, string> = {
   FAILED: "red"
 };
 
-const statusLabels: Record<string, string> = {
-  ACTIVE: "Đang làm việc",
-  INACTIVE: "Ngừng hoạt động",
-  PENDING: "Chờ duyệt",
-  APPROVED: "Đã duyệt",
-  REJECTED: "Từ chối",
-  OPEN: "Đang mở",
-  CLOSED: "Đã đóng",
-  DRAFT: "Bản nháp",
-  OFFER_ACCEPTED: "Đã nhận đề nghị",
-  HIRED: "Đã tuyển",
-  RUNNING: "Đang chạy",
-  COMPLETED: "Hoàn tất",
-  EXECUTED: "Đã chạy",
-  FAILED: "Thất bại"
-};
-
 export function StatusTag({ value }: StatusTagProps) {
-  return <Tag color={statusColors[value] ?? "default"}>{statusLabels[value] ?? value}</Tag>;
+  const { t } = useTranslation();
+  return <Tag color={statusColors[value] ?? "default"}>{t(`status.${value}`, value)}</Tag>;
 }

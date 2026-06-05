@@ -1,12 +1,14 @@
 import { Descriptions, Drawer, List, Spin } from "antd";
 import ReactECharts from "echarts-for-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
 
 type EmployeeNode = { id: string; fullName: string; employeeNo: string };
 type TreeNode = { id: string; code: string; name: string; employees: EmployeeNode[] };
 
 export default function OrgChart() {
+  const { t } = useTranslation();
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<TreeNode | null>(null);
@@ -26,7 +28,7 @@ export default function OrgChart() {
     series: [{
       type: "tree",
       data: [{
-        name: "Công ty",
+        name: t("pages.departments.company"),
         children: tree.map(dept => ({
           name: dept.name,
           value: dept.code,
@@ -58,18 +60,18 @@ export default function OrgChart() {
   return (
     <>
       <ReactECharts option={chartOption} style={{ height: 500 }} onEvents={handleEvents} />
-      <Drawer title={selected ? `Phòng ban: ${selected.name}` : ""} width="min(480px, calc(100vw - 32px))"
+      <Drawer title={selected ? t("pages.departments.drawerTitle", { name: selected.name }) : ""} width="min(480px, calc(100vw - 32px))"
         open={!!selected} onClose={() => setSelected(null)}>
         {selected && (
           <>
             <Descriptions bordered column={1} size="middle" style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Mã">{selected.code}</Descriptions.Item>
-              <Descriptions.Item label="Tên">{selected.name}</Descriptions.Item>
-              <Descriptions.Item label="Số nhân viên">{selected.employees.length}</Descriptions.Item>
+              <Descriptions.Item label={t("pages.departments.codeShort")}>{selected.code}</Descriptions.Item>
+              <Descriptions.Item label={t("common.name")}>{selected.name}</Descriptions.Item>
+              <Descriptions.Item label={t("pages.departments.employeeCount")}>{selected.employees.length}</Descriptions.Item>
             </Descriptions>
-            <h4>Nhân viên</h4>
+            <h4>{t("common.employees")}</h4>
             <List dataSource={selected.employees} renderItem={e => (
-              <List.Item><strong>{e.fullName}</strong> — {e.employeeNo}</List.Item>
+              <List.Item><strong>{e.fullName}</strong> - {e.employeeNo}</List.Item>
             )} />
           </>
         )}

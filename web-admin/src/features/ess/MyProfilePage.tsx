@@ -1,4 +1,4 @@
-import { Card, Col, Descriptions, Row, Skeleton, Typography } from 'antd';
+import { Card, Descriptions, Skeleton, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,19 +36,19 @@ export default function MyProfilePage() {
 
   return (
     <div className="page-header">
-      <Title level={3}><UserOutlined /> {t('nav.employees')}</Title>
+      <Title level={3}><UserOutlined /> {t('ess.profile')}</Title>
       <Card>
         <Skeleton loading={loading} active>
           {profile ? (
             <Descriptions bordered column={2}>
-              <Descriptions.Item label="Mã NV">{profile.employeeNo}</Descriptions.Item>
-              <Descriptions.Item label="Họ tên">{profile.fullName}</Descriptions.Item>
-              <Descriptions.Item label="Phòng ban">{profile.department?.name ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="Vị trí">{profile.position?.title ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">{profile.employmentStatus ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('ess.employeeNoShort')}>{profile.employeeNo}</Descriptions.Item>
+              <Descriptions.Item label={t('pages.employees.fullName')}>{profile.fullName}</Descriptions.Item>
+              <Descriptions.Item label={t('common.department')}>{profile.department?.name ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('common.position')}>{profile.position?.title ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('common.status')}>{profile.employmentStatus ?? '-'}</Descriptions.Item>
             </Descriptions>
           ) : (
-            <p>Không tải được thông tin hồ sơ.</p>
+            <p>{t('ess.profileLoadError')}</p>
           )}
         </Skeleton>
       </Card>

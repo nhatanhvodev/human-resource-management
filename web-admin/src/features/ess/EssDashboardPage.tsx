@@ -11,13 +11,13 @@ export default function EssDashboardPage() {
       <div className="page-header"><Title level={3}>{t('nav.dashboard')}</Title></div>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
-          <Card><Statistic title="Ngày công tháng này" value={22} suffix="/ 26" /></Card>
+          <Card><Statistic title={t('ess.workdaysThisMonth')} value={22} suffix="/ 26" /></Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card><Statistic title="Ngày nghỉ còn lại" value={12} valueStyle={{ color: '#3f8600' }} /></Card>
+          <Card><Statistic title={t('ess.remainingLeave')} value={12} valueStyle={{ color: '#3f8600' }} /></Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card><Statistic title="Khóa học đang học" value={2} /></Card>
+          <Card><Statistic title={t('ess.coursesInProgress')} value={2} /></Card>
         </Col>
       </Row>
     </div>

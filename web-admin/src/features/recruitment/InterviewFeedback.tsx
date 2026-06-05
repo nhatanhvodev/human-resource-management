@@ -1,5 +1,6 @@
 import { Button, Form, Input, InputNumber, Rate, message } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default function InterviewFeedback({ interviewId, open, onClose, onSaved }: Props) {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
@@ -18,11 +20,11 @@ export default function InterviewFeedback({ interviewId, open, onClose, onSaved 
     setSaving(true);
     try {
       await apiClient.put(`/interviews/${interviewId}/feedback`, values);
-      message.success("Đã lưu phản hồi");
+      message.success(t("pages.recruitment.savedFeedback"));
       form.resetFields();
       onSaved();
     } catch {
-      message.error("Không thể lưu phản hồi");
+      message.error(t("pages.recruitment.saveFeedbackError"));
     } finally {
       setSaving(false);
     }
@@ -32,13 +34,13 @@ export default function InterviewFeedback({ interviewId, open, onClose, onSaved 
 
   return (
     <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ rating: 0 }}>
-      <Form.Item label="Điểm" name="rating" rules={[{ required: true, message: "Cho điểm" }]}>
+      <Form.Item label={t("pages.recruitment.rating")} name="rating" rules={[{ required: true, message: t("pages.recruitment.giveRating") }]}>
         <Rate />
       </Form.Item>
-      <Form.Item label="Phản hồi" name="feedback" rules={[{ required: true, message: "Nhập phản hồi" }]}>
-        <Input.TextArea rows={4} placeholder="Nhận xét về buổi phỏng vấn..." />
+      <Form.Item label={t("pages.recruitment.feedback")} name="feedback" rules={[{ required: true, message: t("pages.recruitment.enterFeedback") }]}>
+        <Input.TextArea rows={4} placeholder={t("pages.recruitment.feedbackPlaceholder")} />
       </Form.Item>
-      <Button type="primary" htmlType="submit" loading={saving}>Lưu phản hồi</Button>
+      <Button type="primary" htmlType="submit" loading={saving}>{t("pages.recruitment.saveFeedback")}</Button>
     </Form>
   );
 }

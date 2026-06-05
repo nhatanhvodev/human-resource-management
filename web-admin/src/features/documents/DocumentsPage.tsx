@@ -2,6 +2,7 @@ import { DeleteOutlined } from "@ant-design/icons";
 import { Alert, Button, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -19,9 +20,8 @@ type DocumentItem = {
   uploadedAt: string;
 };
 
-const CATEGORIES = ["CONTRACT", "CV", "CERTIFICATE", "POLICY", "OTHER"];
-
 export default function DocumentsPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +36,11 @@ export default function DocumentsPage() {
       });
       setItems(response.data.items ?? []);
     } catch {
-      setError("Không tải được danh sách tài liệu.");
+      setError(t("pages.documents.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -51,7 +51,7 @@ export default function DocumentsPage() {
       await apiClient.delete(`/documents/${id}`);
       await load();
     } catch {
-      setError("Không xoá được tài liệu.");
+      setError(t("pages.documents.deleteError"));
     } finally {
       setSaving(false);
     }
@@ -64,12 +64,12 @@ export default function DocumentsPage() {
   };
 
   const columns = useMemo<ColumnsType<DocumentItem>>(() => [
-    { title: "Tên gốc", dataIndex: "originalName" },
-    { title: "Loại", dataIndex: "fileType", width: 100 },
-    { title: "Kích thước", dataIndex: "fileSize", width: 100, render: (v: number) => formatSize(v) },
-    { title: "Danh mục", dataIndex: "category", width: 120 },
-    { title: "Nhân viên", dataIndex: "employeeId", width: 120, render: (v: string) => v.slice(0, 8) },
-    { title: "Ngày tải", dataIndex: "uploadedAt", width: 180 },
+    { title: t("pages.documents.originalName"), dataIndex: "originalName" },
+    { title: t("pages.documents.fileType"), dataIndex: "fileType", width: 100 },
+    { title: t("pages.documents.fileSize"), dataIndex: "fileSize", width: 100, render: (v: number) => formatSize(v) },
+    { title: t("pages.documents.category"), dataIndex: "category", width: 120 },
+    { title: t("common.employee"), dataIndex: "employeeId", width: 120, render: (v: string) => v.slice(0, 8) },
+    { title: t("pages.documents.uploadedAt"), dataIndex: "uploadedAt", width: 180 },
     {
       title: "", key: "actions", width: 80,
       render: (_, row) => (
@@ -77,17 +77,17 @@ export default function DocumentsPage() {
           onClick={() => void handleDelete(row.id)} />
       )
     }
-  ], [saving]);
+  ], [saving, t]);
 
   return (
     <>
       <div className="page-header">
-        <h1>Tài liệu</h1>
-        <p>Quản lý tài liệu nhân sự: hợp đồng, CV, chứng chỉ, chính sách.</p>
+        <h1>{t("pages.documents.title")}</h1>
+        <p>{t("pages.documents.subtitle")}</p>
       </div>
       <PageToolbar>
         <Space />
-        <span>{items.length} tài liệu</span>
+        <span>{t("pages.documents.count", { count: items.length })}</span>
       </PageToolbar>
       {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
       <AppTable<DocumentItem> rowKey="id" loading={loading} columns={columns} dataSource={items} pagination={false} />

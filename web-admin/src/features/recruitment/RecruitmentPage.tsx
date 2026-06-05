@@ -1,6 +1,7 @@
 import { Alert, Button, Drawer, Form, Input, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -75,17 +76,18 @@ function usePagedData<T>(path: string, errorMessage: string) {
 }
 
 export default function RecruitmentPage() {
+  const { t } = useTranslation();
   const candidates = usePagedData<Candidate>(
     "/candidates",
-    "Không tải được danh sách ứng viên. Kiểm tra token, tenant và kết nối backend."
+    t("pages.recruitment.candidateLoadError")
   );
   const postings = usePagedData<JobPosting>(
     "/job-postings",
-    "Không tải được danh sách tin tuyển dụng. Kiểm tra token, tenant và kết nối backend."
+    t("pages.recruitment.postingLoadError")
   );
   const applications = usePagedData<RecruitmentApplication>(
     "/applications",
-    "Không tải được hồ sơ ứng tuyển. Kiểm tra token, tenant và kết nối backend."
+    t("pages.recruitment.applicationLoadError")
   );
   const [departments, setDepartments] = useState<Department[]>([]);
   const [saving, setSaving] = useState(false);
@@ -128,22 +130,22 @@ export default function RecruitmentPage() {
   useEffect(() => { void loadInterviews(); }, [loadInterviews]);
 
   const intervieweeColumns = useMemo<ColumnsType<Interview>>(() => [
-    { title: "Hồ sơ", dataIndex: "applicationId", width: 120, render: (v: string) => v.slice(0, 8) },
-    { title: "Người PV", dataIndex: "interviewerId", width: 120, render: (v: string) => v?.slice(0, 8) ?? "-" },
-    { title: "Thời gian", dataIndex: "scheduledAt", width: 180 },
-    { title: "Địa điểm", dataIndex: "location", width: 120, render: (v: string) => v ?? "-" },
+    { title: t("pages.recruitment.application"), dataIndex: "applicationId", width: 120, render: (v: string) => v.slice(0, 8) },
+    { title: t("pages.recruitment.interviewer"), dataIndex: "interviewerId", width: 120, render: (v: string) => v?.slice(0, 8) ?? "-" },
+    { title: t("pages.recruitment.scheduledAt"), dataIndex: "scheduledAt", width: 180 },
+    { title: t("pages.recruitment.location"), dataIndex: "location", width: 120, render: (v: string) => v ?? "-" },
     { title: "Rating", dataIndex: "rating", width: 70, render: (v: number) => v ?? "-" },
     {
-      title: "Trạng thái", dataIndex: "status", width: 130,
+      title: t("common.status"), dataIndex: "status", width: 130,
       render: (v: string) => <StatusTag value={v} />
     },
     {
       title: "", key: "actions", width: 100,
       render: (_, row) => (
-        <Button size="small" onClick={() => setFeedbackInterviewId(row.id)}>Phản hồi</Button>
+        <Button size="small" onClick={() => setFeedbackInterviewId(row.id)}>{t("pages.recruitment.feedback")}</Button>
       )
     }
-  ], []);
+  ], [t]);
 
   const openCandidateEdit = (candidate: Candidate) => {
     setEditingCandidate(candidate);
@@ -168,7 +170,7 @@ export default function RecruitmentPage() {
       candidateForm.resetFields();
       await candidates.reload();
     } catch {
-      setError("Không cập nhật được ứng viên. Kiểm tra họ tên hoặc quyền cập nhật.");
+      setError(t("pages.recruitment.candidateUpdateError"));
     } finally {
       setSaving(false);
     }
@@ -187,7 +189,7 @@ export default function RecruitmentPage() {
       postingForm.resetFields();
       await postings.reload();
     } catch {
-      setError("Không cập nhật được tin tuyển dụng. Kiểm tra tiêu đề hoặc quyền cập nhật.");
+      setError(t("pages.recruitment.postingUpdateError"));
     } finally {
       setSaving(false);
     }
@@ -209,7 +211,7 @@ export default function RecruitmentPage() {
       convertForm.resetFields();
       await applications.reload();
     } catch {
-      setError("Không chuyển được hồ sơ thành nhân viên. Hồ sơ cần ở trạng thái đã nhận đề nghị và có phòng ban hợp lệ.");
+      setError(t("pages.recruitment.convertError"));
     } finally {
       setSaving(false);
     }
@@ -217,62 +219,62 @@ export default function RecruitmentPage() {
 
   const candidateColumns = useMemo<ColumnsType<Candidate>>(
     () => [
-      { title: "Ứng viên", dataIndex: "fullName" },
+      { title: t("pages.recruitment.candidate"), dataIndex: "fullName" },
       {
-        title: "Thao tác",
+        title: t("common.actions"),
         key: "actions",
         width: 160,
         render: (_, row) => (
           <Button size="small" onClick={() => openCandidateEdit(row)}>
-            Sửa ứng viên
+            {t("pages.recruitment.editCandidate")}
           </Button>
         )
       }
     ],
-    []
+    [t]
   );
 
   const postingColumns = useMemo<ColumnsType<JobPosting>>(
     () => [
-      { title: "Tin tuyển dụng", dataIndex: "title" },
+      { title: t("pages.recruitment.posting"), dataIndex: "title" },
       {
-        title: "Trạng thái",
+        title: t("common.status"),
         dataIndex: "status",
         width: 160,
         render: (value?: string) => (value ? <StatusTag value={value} /> : null)
       },
       {
-        title: "Thao tác",
+        title: t("common.actions"),
         key: "actions",
         width: 180,
         render: (_, row) => (
           <Button size="small" onClick={() => openPostingEdit(row)}>
-            Sửa tin
+            {t("pages.recruitment.editPosting")}
           </Button>
         )
       }
     ],
-    []
+    [t]
   );
 
   const applicationColumns = useMemo<ColumnsType<RecruitmentApplication>>(
     () => [
       {
-        title: "Hồ sơ",
+        title: t("pages.recruitment.application"),
         dataIndex: "id",
         width: 140,
         render: (value: string) => value.slice(0, 8)
       },
-      { title: "Ứng viên", dataIndex: "candidateName", render: (value?: string) => value ?? "Chưa có dữ liệu từ API" },
-      { title: "Vị trí", dataIndex: "jobTitle", render: (value?: string) => value ?? "Chưa có dữ liệu từ API" },
+      { title: t("pages.recruitment.candidate"), dataIndex: "candidateName", render: (value?: string) => value ?? t("pages.recruitment.missingApiData") },
+      { title: t("common.position"), dataIndex: "jobTitle", render: (value?: string) => value ?? t("pages.recruitment.missingApiData") },
       {
-        title: "Trạng thái",
+        title: t("common.status"),
         dataIndex: "status",
         width: 180,
         render: (value: string) => <StatusTag value={value} />
       },
       {
-        title: "Thao tác",
+        title: t("common.actions"),
         key: "actions",
         width: 210,
         render: (_, row) => (
@@ -284,19 +286,19 @@ export default function RecruitmentPage() {
               convertForm.resetFields();
             }}
           >
-            Chuyển thành nhân viên
+            {t("pages.recruitment.convertToEmployee")}
           </Button>
         )
       }
     ],
-    [convertForm, saving]
+    [convertForm, saving, t]
   );
 
   return (
     <>
       <div className="page-header">
-        <h1>Tuyển dụng</h1>
-        <p>Quản lý ứng viên, tin tuyển dụng và chuyển hồ sơ trúng tuyển thành nhân viên.</p>
+        <h1>{t("pages.recruitment.title")}</h1>
+        <p>{t("pages.recruitment.subtitle")}</p>
       </div>
 
       {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
@@ -305,7 +307,7 @@ export default function RecruitmentPage() {
         items={[
           {
             key: "candidates",
-            label: "Ứng viên",
+            label: t("pages.recruitment.candidates"),
             children: (
               <>
                 {candidates.error ? <Alert type="warning" showIcon message={candidates.error} style={{ marginBottom: 16 }} /> : null}
@@ -321,7 +323,7 @@ export default function RecruitmentPage() {
           },
           {
             key: "postings",
-            label: "Tin tuyển dụng",
+            label: t("pages.recruitment.postings"),
             children: (
               <>
                 {postings.error ? <Alert type="warning" showIcon message={postings.error} style={{ marginBottom: 16 }} /> : null}
@@ -337,7 +339,7 @@ export default function RecruitmentPage() {
           },
           {
             key: "applications",
-            label: "Hồ sơ ứng tuyển",
+            label: t("pages.recruitment.applications"),
             children: (
               <>
                 {applications.error ? <Alert type="warning" showIcon message={applications.error} style={{ marginBottom: 16 }} /> : null}
@@ -363,11 +365,11 @@ export default function RecruitmentPage() {
           },
           {
             key: "interviews",
-            label: "Phỏng vấn",
+            label: t("pages.recruitment.interviews"),
             children: (
               <>
                 <Space style={{ marginBottom: 16 }}>
-                  <Button type="primary" onClick={() => setInterviewOpen(true)}>Lên lịch phỏng vấn</Button>
+                  <Button type="primary" onClick={() => setInterviewOpen(true)}>{t("pages.recruitment.scheduleInterview")}</Button>
                 </Space>
                 <AppTable<Interview> rowKey="id" loading={interviewLoading} columns={intervieweeColumns} dataSource={interviewList} pagination={false} />
               </>
@@ -376,37 +378,37 @@ export default function RecruitmentPage() {
         ]}
       />
 
-      <FormDrawer open={Boolean(editingCandidate)} title="Cập nhật ứng viên" onClose={() => setEditingCandidate(null)}>
+      <FormDrawer open={Boolean(editingCandidate)} title={t("pages.recruitment.updateCandidate")} onClose={() => setEditingCandidate(null)}>
         <Form form={candidateForm} layout="vertical" onFinish={updateCandidate}>
-          <Form.Item label="Họ và tên" name="fullName" htmlFor="candidate-name" rules={[{ required: true, message: "Nhập họ và tên" }]}>
+          <Form.Item label={t("pages.employees.fullName")} name="fullName" htmlFor="candidate-name" rules={[{ required: true, message: t("pages.recruitment.enterFullName") }]}>
             <Input id="candidate-name" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving}>
-            Lưu thay đổi
+            {t("pages.employees.saveChanges")}
           </Button>
         </Form>
       </FormDrawer>
 
-      <FormDrawer open={Boolean(editingPosting)} title="Cập nhật tin tuyển dụng" onClose={() => setEditingPosting(null)}>
+      <FormDrawer open={Boolean(editingPosting)} title={t("pages.recruitment.updatePosting")} onClose={() => setEditingPosting(null)}>
         <Form form={postingForm} layout="vertical" onFinish={updatePosting}>
-          <Form.Item label="Tiêu đề" name="title" htmlFor="posting-title" rules={[{ required: true, message: "Nhập tiêu đề" }]}>
+          <Form.Item label={t("pages.announcements.announcementTitle")} name="title" htmlFor="posting-title" rules={[{ required: true, message: t("pages.recruitment.enterTitle") }]}>
             <Input id="posting-title" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving}>
-            Lưu thay đổi
+            {t("pages.employees.saveChanges")}
           </Button>
         </Form>
       </FormDrawer>
 
-      <FormDrawer open={Boolean(convertingApplication)} title="Chuyển thành nhân viên" onClose={() => setConvertingApplication(null)}>
+      <FormDrawer open={Boolean(convertingApplication)} title={t("pages.recruitment.convertToEmployee")} onClose={() => setConvertingApplication(null)}>
         <Form form={convertForm} layout="vertical" onFinish={convertApplication}>
-          <Form.Item label="Mã nhân viên" name="employeeNo" htmlFor="convert-employee-no" rules={[{ required: true, message: "Nhập mã nhân viên" }]}>
+          <Form.Item label={t("pages.employees.employeeNo")} name="employeeNo" htmlFor="convert-employee-no" rules={[{ required: true, message: t("pages.recruitment.enterEmployeeNo") }]}>
             <Input id="convert-employee-no" />
           </Form.Item>
-          <Form.Item label="Phòng ban" name="departmentId" htmlFor="convert-department" rules={[{ required: true, message: "Chọn phòng ban" }]}>
+          <Form.Item label={t("common.department")} name="departmentId" htmlFor="convert-department" rules={[{ required: true, message: t("pages.recruitment.chooseDepartment") }]}>
             <Select
               id="convert-department"
-              placeholder="Chọn phòng ban"
+              placeholder={t("pages.recruitment.chooseDepartment")}
               options={departments.map((department) => ({
                 value: department.id,
                 label: `${department.code} - ${department.name}`
@@ -415,16 +417,16 @@ export default function RecruitmentPage() {
           </Form.Item>
           <Space>
             <Button type="primary" htmlType="submit" loading={saving} disabled={!departments.length}>
-              Chuyển đổi
+              {t("pages.recruitment.convert")}
             </Button>
           </Space>
         </Form>
       </FormDrawer>
-      <Drawer title="Lên lịch phỏng vấn" width="min(480px, calc(100vw - 32px))" open={interviewOpen} onClose={() => setInterviewOpen(false)} destroyOnClose>
+      <Drawer title={t("pages.recruitment.scheduleInterview")} width="min(480px, calc(100vw - 32px))" open={interviewOpen} onClose={() => setInterviewOpen(false)} destroyOnClose>
         <InterviewScheduler open={interviewOpen} applications={applications.items} onClose={() => setInterviewOpen(false)} onSaved={() => { setInterviewOpen(false); void loadInterviews(); }} />
       </Drawer>
 
-      <Drawer title="Phản hồi phỏng vấn" width="min(420px, calc(100vw - 32px))" open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} destroyOnClose>
+      <Drawer title={t("pages.recruitment.interviewFeedback")} width="min(420px, calc(100vw - 32px))" open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} destroyOnClose>
         <InterviewFeedback interviewId={feedbackInterviewId} open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} onSaved={() => { setFeedbackInterviewId(null); void loadInterviews(); }} />
       </Drawer>
     </>

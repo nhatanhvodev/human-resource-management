@@ -57,6 +57,13 @@ body {
   gap: 8px;
 }
 
+.app-shell__header-left .ant-typography {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .app-shell__menu-button {
   display: none;
 }
@@ -79,6 +86,11 @@ body {
 
 .app-shell__status-short {
   display: none;
+}
+
+.language-switcher {
+  width: 72px;
+  flex: 0 0 auto;
 }
 
 .app-shell__content {
@@ -159,8 +171,13 @@ body {
     padding: 0 16px;
   }
 
+  .app-shell__header-left {
+    flex: 1 1 auto;
+  }
+
   .app-shell__menu-button {
     display: inline-flex;
+    flex: 0 0 auto;
   }
 
   .app-shell__mobile-nav .ant-drawer-body {
@@ -180,6 +197,35 @@ body {
   }
 
   .app-table .ant-table-body {
-    max-height: calc(100vh - 400px) !important;
+    max-height: calc(100vh - 300px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell__header {
+    gap: 8px;
+  }
+
+  .app-shell__header-left {
+    max-width: 128px;
+  }
+
+  .app-shell__status {
+    flex: 0 0 auto;
+    gap: 3px;
+  }
+
+  .language-switcher {
+    width: 64px !important;
+  }
+
+  .language-switcher .ant-select-selection-item {
+    overflow: hidden;
+    text-overflow: clip;
+  }
+
+  .app-shell__status .ant-tag {
+    max-width: 56px;
+    padding-inline: 4px;
   }
 }

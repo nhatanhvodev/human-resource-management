@@ -1,10 +1,12 @@
 import { SaveOutlined } from "@ant-design/icons";
 import { Button, Form, Input } from "antd";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { loadDevSettings, saveDevSettings } from "../../shared/config/devSettingsStore";
 
 export default function DevSettingsPage() {
+  const { t } = useTranslation();
   const initialSettings = loadDevSettings();
   const [token, setToken] = useState(initialSettings.token);
   const [tenantId, setTenantId] = useState(initialSettings.tenantId);
@@ -19,13 +21,13 @@ export default function DevSettingsPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Thiết lập dev</h1>
-        <p>Cấu hình header request dùng cho giao diện quản trị trong môi trường phát triển.</p>
+        <h1>{t("pages.settings.title")}</h1>
+        <p>{t("pages.settings.subtitle")}</p>
       </div>
 
       <div className="settings-panel">
         <Form layout="vertical">
-          <Form.Item label="Token truy cập" htmlFor="dev-token">
+          <Form.Item label={t("pages.settings.token")} htmlFor="dev-token">
             <Input.Password
               id="dev-token"
               value={token}
@@ -33,7 +35,7 @@ export default function DevSettingsPage() {
               onChange={(event) => setToken(event.target.value)}
             />
           </Form.Item>
-          <Form.Item label="Mã đơn vị" htmlFor="dev-tenant">
+          <Form.Item label={t("pages.settings.tenant")} htmlFor="dev-tenant">
             <Input
               id="dev-tenant"
               value={tenantId}
@@ -42,7 +44,7 @@ export default function DevSettingsPage() {
             />
           </Form.Item>
           <Button type="primary" htmlType="button" icon={<SaveOutlined />} onClick={onSave}>
-            Lưu
+            {t("common.save")}
           </Button>
         </Form>
       </div>

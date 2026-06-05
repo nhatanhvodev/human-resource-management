@@ -1,5 +1,6 @@
 import { Button, DatePicker, Form, Input, Select, message } from "antd";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
 
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export default function InterviewScheduler({ open, applications, onClose, onSaved }: Props) {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [interviewers, setInterviewers] = useState<Employee[]>([]);
@@ -36,11 +38,11 @@ export default function InterviewScheduler({ open, applications, onClose, onSave
         location: values.location || null,
         meetingLink: values.meetingLink || null
       });
-      message.success("Đã lên lịch phỏng vấn");
+      message.success(t("pages.recruitment.interviewScheduled"));
       form.resetFields();
       onSaved();
     } catch {
-      message.error("Không thể lên lịch phỏng vấn");
+      message.error(t("pages.recruitment.scheduleInterviewError"));
     } finally {
       setSaving(false);
     }
@@ -51,37 +53,37 @@ export default function InterviewScheduler({ open, applications, onClose, onSave
   return (
     <div style={{ padding: "16px 0" }}>
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        <Form.Item label="Hồ sơ ứng tuyển" name="applicationId" rules={[{ required: true }]}>
+        <Form.Item label={t("pages.recruitment.applications")} name="applicationId" rules={[{ required: true }]}>
           <Select
             showSearch
-            placeholder="Chọn hồ sơ"
+            placeholder={t("pages.recruitment.chooseApplication")}
             options={applications.map(a => ({
               value: a.id,
-              label: `${a.candidateName ?? a.id.slice(0, 8)} - ${a.jobTitle ?? "Chưa rõ"}`
+              label: `${a.candidateName ?? a.id.slice(0, 8)} - ${a.jobTitle ?? t("pages.recruitment.unknown")}`
             }))}
           />
         </Form.Item>
-        <Form.Item label="Người phỏng vấn" name="interviewerId">
+        <Form.Item label={t("pages.recruitment.interviewer")} name="interviewerId">
           <Select
             showSearch
             allowClear
-            placeholder="Chọn người phỏng vấn"
+            placeholder={t("pages.recruitment.chooseInterviewer")}
             options={interviewers.map(e => ({
               value: e.id,
               label: `${e.employeeNo} - ${e.fullName}`
             }))}
           />
         </Form.Item>
-        <Form.Item label="Thời gian" name="scheduledAt" rules={[{ required: true }]}>
+        <Form.Item label={t("pages.recruitment.scheduledAt")} name="scheduledAt" rules={[{ required: true }]}>
           <DatePicker showTime style={{ width: "100%" }} />
         </Form.Item>
-        <Form.Item label="Địa điểm" name="location">
-          <Input placeholder="Phòng họp..." />
+        <Form.Item label={t("pages.recruitment.location")} name="location">
+          <Input placeholder={t("pages.recruitment.meetingRoomPlaceholder")} />
         </Form.Item>
         <Form.Item label="Link meeting" name="meetingLink">
           <Input placeholder="https://meet.google.com/..." />
         </Form.Item>
-        <Button type="primary" htmlType="submit" loading={saving}>Lên lịch</Button>
+        <Button type="primary" htmlType="submit" loading={saving}>{t("pages.recruitment.schedule")}</Button>
       </Form>
     </div>
   );

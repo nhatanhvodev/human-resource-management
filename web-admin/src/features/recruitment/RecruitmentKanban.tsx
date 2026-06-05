@@ -12,6 +12,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
 import { Card, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
 import { StatusTag } from "../../shared/ui/StatusTag";
@@ -25,16 +26,6 @@ type Application = {
 
 const STAGES = ["SCREEN", "PHONE_INTERVIEW", "TECHNICAL", "ONSITE", "OFFER", "HIRED", "REJECTED"];
 
-const STAGE_LABELS: Record<string, string> = {
-  SCREEN: "Sàng lọc",
-  PHONE_INTERVIEW: "PV Điện thoại",
-  TECHNICAL: "Kỹ thuật",
-  ONSITE: "Onsite",
-  OFFER: "Đề nghị",
-  HIRED: "Đã tuyển",
-  REJECTED: "Từ chối"
-};
-
 const STAGE_COLORS: Record<string, string> = {
   SCREEN: "#faad14",
   PHONE_INTERVIEW: "#1677ff",
@@ -46,6 +37,7 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 function DroppableColumn({ stage, children }: { stage: string; children: React.ReactNode }) {
+  const { t } = useTranslation();
   const { setNodeRef } = useDroppable({ id: stage });
   return (
     <div ref={setNodeRef} style={{
@@ -56,7 +48,7 @@ function DroppableColumn({ stage, children }: { stage: string; children: React.R
         fontWeight: 600, padding: "0 4px 8px", textAlign: "center",
         borderBottom: `3px solid ${STAGE_COLORS[stage] ?? "#ddd"}`
       }}>
-        {STAGE_LABELS[stage] ?? stage}
+        {t(`pages.recruitment.stage.${stage}`, stage)}
       </div>
       {children}
     </div>
@@ -82,6 +74,7 @@ function KanbanCard({ app }: { app: Application }) {
 }
 
 export default function RecruitmentKanban({ applications }: { applications: Application[] }) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<Application[]>(applications);
   const [activeId, setActiveId] = useState<string | null>(null);
   const activeApp = items.find(a => a.id === activeId);
@@ -108,9 +101,9 @@ export default function RecruitmentKanban({ applications }: { applications: Appl
     try {
       await apiClient.post(`/applications/${appId}/move-stage?stage=${newStage}`);
       setItems(prev => prev.map(a => a.id === appId ? { ...a, status: newStage } : a));
-      message.success(`Đã chuyển sang ${STAGE_LABELS[newStage] ?? newStage}`);
+      message.success(t("pages.recruitment.moveSuccess", { stage: t(`pages.recruitment.stage.${newStage}`, newStage) }));
     } catch {
-      message.error("Không thể di chuyển hồ sơ");
+      message.error(t("pages.recruitment.moveError"));
     }
   };
 

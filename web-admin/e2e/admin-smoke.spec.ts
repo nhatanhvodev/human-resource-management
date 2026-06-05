@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({
         items: [{ id: "11111111-1111-1111-1111-111111111111", code: "ENG-E2E", name: "Phòng kỹ thuật E2E" }],
         page: 0,
-        size: 10,
+        size: 20,
         totalItems: 1,
         totalPages: 1
       })
@@ -25,22 +25,23 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/v1/employees**", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ items: [], page: 0, size: 10, totalItems: 0, totalPages: 0 })
+      body: JSON.stringify({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 })
     });
   });
   await page.route("**/api/v1/payroll-periods**", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ items: [], page: 0, size: 10, totalItems: 0, totalPages: 0 })
+      body: JSON.stringify({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 })
     });
   });
 });
 
 test("luồng quản trị cơ bản", async ({ page }) => {
-  await page.goto("/settings");
-  await page.getByLabel("Token truy cập").fill("e2e-token");
-  await page.getByLabel("Mã đơn vị").fill("tenant-e2e");
-  await page.getByRole("button", { name: "Lưu" }).click();
+  await page.goto("/");
+  await page.evaluate(() => {
+    localStorage.setItem("hrms.dev.token", "local-test-token");
+    localStorage.setItem("hrms.dev.tenant", "tenant-e2e");
+  });
 
   await page.goto("/departments");
   await page.getByRole("button", { name: "Thêm phòng ban" }).click();

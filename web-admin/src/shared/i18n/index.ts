@@ -10,6 +10,11 @@ i18n
   .init({
     resources: { vi: { translation: vi }, en: { translation: en } },
     fallbackLng: 'vi',
+    detection: {
+      order: ['localStorage'],
+      caches: ['localStorage'],
+      lookupLocalStorage: 'i18nextLng'
+    },
     interpolation: { escapeValue: false }
   });
 

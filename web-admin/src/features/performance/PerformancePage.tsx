@@ -1,6 +1,7 @@
 import { Alert, Descriptions, Drawer, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -39,35 +40,8 @@ type KPI = {
   weight: number;
 };
 
-const cycleColumns: ColumnsType<AppraisalCycle> = [
-  { title: "Tên chu kỳ", dataIndex: "name", width: 180 },
-  { title: "Loại", dataIndex: "cycleType", width: 100 },
-  { title: "Từ ngày", dataIndex: "startDate", width: 130 },
-  { title: "Đến ngày", dataIndex: "endDate", width: 130 },
-  {
-    title: "Trạng thái",
-    dataIndex: "status",
-    width: 130,
-    render: (v: string) => <StatusTag value={v} />
-  },
-];
-
-const reviewColumns: ColumnsType<PerformanceReview> = [
-  { title: "Loại đánh giá", dataIndex: "reviewerType", width: 130 },
-  { title: "Điểm", dataIndex: "overallScore", width: 80, render: (v?: number) => v?.toFixed(1) ?? "-" },
-  { title: "Trạng thái", dataIndex: "status", width: 130, render: (v: string) => <StatusTag value={v} /> },
-  { title: "Ngày nộp", dataIndex: "submittedAt", width: 180 },
-];
-
-const kpiColumns: ColumnsType<KPI> = [
-  { title: "Tiêu chí", dataIndex: "title" },
-  { title: "Mô tả", dataIndex: "description", ellipsis: true },
-  { title: "Điểm mục tiêu", dataIndex: "targetScore", width: 120, render: (v: number) => v.toFixed(1) },
-  { title: "Điểm thực tế", dataIndex: "actualScore", width: 120, render: (v?: number) => v?.toFixed(1) ?? "-" },
-  { title: "Trọng số", dataIndex: "weight", width: 100, render: (v: number) => `${v}%` },
-];
-
 export default function PerformancePage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("cycles");
   const [cycles, setCycles] = useState<AppraisalCycle[]>([]);
   const [reviews, setReviews] = useState<PerformanceReview[]>([]);
@@ -87,11 +61,11 @@ export default function PerformancePage() {
       });
       setCycles(res.data.items ?? []);
     } catch {
-      setError("Không tải được danh sách chu kỳ đánh giá.");
+      setError(t("pages.performance.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { void loadCycles(); }, [loadCycles]);
 
@@ -114,16 +88,52 @@ export default function PerformancePage() {
     }
   };
 
-  const cycleTypeLabel = (t: string) => {
-    const map: Record<string, string> = { Q1: "Quý 1", Q2: "Quý 2", Q3: "Quý 3", Q4: "Quý 4", H1: "Nửa đầu năm", H2: "Nửa cuối năm", YEARLY: "Cả năm" };
-    return map[t] ?? t;
+  const cycleColumns: ColumnsType<AppraisalCycle> = [
+    { title: t("pages.performance.cycleName"), dataIndex: "name", width: 180 },
+    { title: t("pages.performance.cycleType"), dataIndex: "cycleType", width: 100 },
+    { title: t("common.fromDate"), dataIndex: "startDate", width: 130 },
+    { title: t("common.toDate"), dataIndex: "endDate", width: 130 },
+    {
+      title: t("common.status"),
+      dataIndex: "status",
+      width: 130,
+      render: (v: string) => <StatusTag value={v} />
+    },
+  ];
+
+  const reviewColumns: ColumnsType<PerformanceReview> = [
+    { title: t("pages.performance.reviewerType"), dataIndex: "reviewerType", width: 130 },
+    { title: t("pages.performance.score"), dataIndex: "overallScore", width: 80, render: (v?: number) => v?.toFixed(1) ?? "-" },
+    { title: t("common.status"), dataIndex: "status", width: 130, render: (v: string) => <StatusTag value={v} /> },
+    { title: t("pages.performance.submittedAt"), dataIndex: "submittedAt", width: 180 },
+  ];
+
+  const kpiColumns: ColumnsType<KPI> = [
+    { title: t("pages.performance.criterion"), dataIndex: "title" },
+    { title: t("common.description"), dataIndex: "description", ellipsis: true },
+    { title: t("pages.performance.targetScore"), dataIndex: "targetScore", width: 120, render: (v: number) => v.toFixed(1) },
+    { title: t("pages.performance.actualScore"), dataIndex: "actualScore", width: 120, render: (v?: number) => v?.toFixed(1) ?? "-" },
+    { title: t("pages.performance.weight"), dataIndex: "weight", width: 100, render: (v: number) => `${v}%` },
+  ];
+
+  const cycleTypeLabel = (value: string) => {
+    const map: Record<string, string> = {
+      Q1: t("pages.performance.q1"),
+      Q2: t("pages.performance.q2"),
+      Q3: t("pages.performance.q3"),
+      Q4: t("pages.performance.q4"),
+      H1: t("pages.performance.h1"),
+      H2: t("pages.performance.h2"),
+      YEARLY: t("pages.performance.yearly")
+    };
+    return map[value] ?? value;
   };
 
   return (
     <>
       <div className="page-header">
-        <h1>Đánh giá</h1>
-        <p>Quản lý chu kỳ đánh giá, theo dõi kết quả đánh giá nhân viên và KPI.</p>
+        <h1>{t("pages.performance.title")}</h1>
+        <p>{t("pages.performance.subtitle")}</p>
       </div>
 
       {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
@@ -131,7 +141,7 @@ export default function PerformancePage() {
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
         {
           key: "cycles",
-          label: "Chu kỳ đánh giá",
+          label: t("pages.performance.cycles"),
           children: (
             <AppTable<AppraisalCycle>
               rowKey="id"
@@ -143,7 +153,7 @@ export default function PerformancePage() {
                   key: "view",
                   width: 100,
                   render: (_, row) => (
-                    <a onClick={() => void openCycleReviews(row)}>Xem chi tiết</a>
+                    <a onClick={() => void openCycleReviews(row)}>{t("pages.performance.viewDetails")}</a>
                   )
                 }
               ]}
@@ -154,7 +164,7 @@ export default function PerformancePage() {
         },
         {
           key: "reviews",
-          label: "Đánh giá cá nhân",
+          label: t("pages.performance.reviews"),
           children: (
             <AppTable<PerformanceReview>
               rowKey="id"
@@ -181,22 +191,22 @@ export default function PerformancePage() {
       ]} />
 
       <Drawer
-        title={selectedCycle ? `${selectedCycle.name} — ${cycleTypeLabel(selectedCycle.cycleType)}` : "Chi tiết chu kỳ"}
+        title={selectedCycle ? `${selectedCycle.name} - ${cycleTypeLabel(selectedCycle.cycleType)}` : t("pages.performance.cycleDetail")}
         width="min(900px, calc(100vw - 32px))"
         open={openReviews}
         onClose={() => { setOpenReviews(false); setSelectedCycle(null); }}
       >
         {selectedCycle && (
           <Descriptions bordered column={2} size="small" style={{ marginBottom: 16 }}>
-            <Descriptions.Item label="Trạng thái">
+            <Descriptions.Item label={t("common.status")}>
               <StatusTag value={selectedCycle.status} />
             </Descriptions.Item>
-            <Descriptions.Item label="Thời gian">
-              {selectedCycle.startDate} → {selectedCycle.endDate}
+            <Descriptions.Item label={t("pages.performance.period")}>
+              {selectedCycle.startDate} - {selectedCycle.endDate}
             </Descriptions.Item>
           </Descriptions>
         )}
-        <h3>Đánh giá ({reviews.length})</h3>
+        <h3>{t("pages.performance.reviewsCount", { count: reviews.length })}</h3>
         <AppTable<PerformanceReview>
           rowKey="id"
           loading={loadingReviews}

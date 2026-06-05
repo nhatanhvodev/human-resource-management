@@ -1,6 +1,7 @@
 import { Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
 import { getEmployeeId } from '../../shared/auth/jwt';
 
@@ -12,6 +13,7 @@ type Payslip = {
 };
 
 export default function MyPayslipsPage() {
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,16 +32,16 @@ export default function MyPayslipsPage() {
   }, []);
 
   const cols: ColumnsType<Payslip> = [
-    { title: 'Kỳ lương', dataIndex: 'periodName' },
-    { title: 'Tổng thu nhập', dataIndex: 'grossPay', render: (v: number) => v?.toLocaleString() },
-    { title: 'Thực nhận', dataIndex: 'netPay', render: (v: number) => v?.toLocaleString() },
-    { title: 'Trạng thái', dataIndex: 'status' },
-    { title: 'Ngày tạo', dataIndex: 'createdAt' }
+    { title: t('ess.period'), dataIndex: 'periodName' },
+    { title: t('ess.grossPay'), dataIndex: 'grossPay', render: (v: number) => v?.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN') },
+    { title: t('ess.netPay'), dataIndex: 'netPay', render: (v: number) => v?.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN') },
+    { title: t('common.status'), dataIndex: 'status' },
+    { title: t('ess.createdAt'), dataIndex: 'createdAt' }
   ];
 
   return (
     <div>
-      <div className="page-header"><Title level={3}>Phiếu lương</Title></div>
+      <div className="page-header"><Title level={3}>{t('ess.payslips')}</Title></div>
       <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
     </div>
   );

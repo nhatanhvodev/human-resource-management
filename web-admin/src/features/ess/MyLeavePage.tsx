@@ -1,8 +1,10 @@
-import { Button, Table, Tag, Typography } from 'antd';
+import { Button, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
 import { getEmployeeId } from '../../shared/auth/jwt';
+import { StatusTag } from '../../shared/ui/StatusTag';
 
 const { Title } = Typography;
 
@@ -12,6 +14,7 @@ type LeaveItem = {
 };
 
 export default function MyLeavePage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<LeaveItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,18 +33,18 @@ export default function MyLeavePage() {
   }, []);
 
   const cols: ColumnsType<LeaveItem> = [
-    { title: 'Loại', dataIndex: 'leaveType' },
-    { title: 'Từ ngày', dataIndex: 'fromDate' },
-    { title: 'Đến ngày', dataIndex: 'toDate' },
-    { title: 'Lý do', dataIndex: 'reason' },
-    { title: 'Trạng thái', dataIndex: 'status',
-      render: (s: string) => <Tag color={s === 'APPROVED' ? 'green' : s === 'PENDING' ? 'gold' : 'red'}>{s}</Tag> }
+    { title: t('common.type'), dataIndex: 'leaveType' },
+    { title: t('common.fromDate'), dataIndex: 'fromDate' },
+    { title: t('common.toDate'), dataIndex: 'toDate' },
+    { title: t('common.reason'), dataIndex: 'reason' },
+    { title: t('common.status'), dataIndex: 'status',
+      render: (s: string) => <StatusTag value={s} /> }
   ];
 
   return (
     <div>
-      <div className="page-header"><Title level={3}>Nghỉ phép</Title></div>
-      <Button type="primary" style={{ marginBottom: 16 }}>Gửi đơn nghỉ phép</Button>
+      <div className="page-header"><Title level={3}>{t('nav.leave')}</Title></div>
+      <Button type="primary" style={{ marginBottom: 16 }}>{t('ess.submitLeave')}</Button>
       <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
     </div>
   );

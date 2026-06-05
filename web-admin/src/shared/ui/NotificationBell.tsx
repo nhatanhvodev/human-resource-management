@@ -1,6 +1,7 @@
 import { BellOutlined } from '@ant-design/icons';
 import { Badge, Dropdown, List, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getEmployeeId } from '../auth/jwt';
 import { apiClient } from '../api/client';
 
@@ -11,7 +12,10 @@ type Notification = {
   isRead: boolean; createdAt: string;
 };
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function NotificationBell() {
+  const { t } = useTranslation();
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
@@ -19,6 +23,11 @@ export function NotificationBell() {
   const load = async () => {
     try {
       const empId = getEmployeeId();
+      if (!uuidPattern.test(empId)) {
+        setNotifs([]);
+        setUnread(0);
+        return;
+      }
       const [dataRes, countRes] = await Promise.all([
         apiClient.get<Notification[]>('/notifications/mine?unreadOnly=false', {
           headers: { 'X-Employee-Id': empId }
@@ -46,7 +55,7 @@ export function NotificationBell() {
         <br /><Text type="secondary" style={{ fontSize: 12 }}>{n.body}</Text>
       </div>
     )
-  })) : [{ key: 'empty', label: <Text type="secondary">Không có thông báo</Text> }];
+  })) : [{ key: 'empty', label: <Text type="secondary">{t("nav.announcements")}: 0</Text> }];
 
   return (
     <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">

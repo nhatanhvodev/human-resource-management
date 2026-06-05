@@ -1,6 +1,7 @@
 import { Button, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
 import { getEmployeeId } from '../../shared/auth/jwt';
 
@@ -12,6 +13,7 @@ type DocumentItem = {
 };
 
 export default function MyDocumentsPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,17 +32,17 @@ export default function MyDocumentsPage() {
   }, []);
 
   const cols: ColumnsType<DocumentItem> = [
-    { title: 'Tên file', dataIndex: 'originalName' },
-    { title: 'Loại', dataIndex: 'fileType' },
-    { title: 'Kích thước', dataIndex: 'fileSize', render: (v: number) => `${(v / 1024).toFixed(1)} KB` },
-    { title: 'Danh mục', dataIndex: 'category' },
-    { title: 'Ngày tải lên', dataIndex: 'uploadedAt' }
+    { title: t('pages.documents.originalName'), dataIndex: 'originalName' },
+    { title: t('pages.documents.fileType'), dataIndex: 'fileType' },
+    { title: t('pages.documents.fileSize'), dataIndex: 'fileSize', render: (v: number) => `${(v / 1024).toFixed(1)} KB` },
+    { title: t('pages.documents.category'), dataIndex: 'category' },
+    { title: t('pages.documents.uploadedAt'), dataIndex: 'uploadedAt' }
   ];
 
   return (
     <div>
-      <div className="page-header"><Title level={3}>Tài liệu</Title></div>
-      <Button type="primary" style={{ marginBottom: 16 }}>Tải lên</Button>
+      <div className="page-header"><Title level={3}>{t('nav.documents')}</Title></div>
+      <Button type="primary" style={{ marginBottom: 16 }}>{t('ess.upload')}</Button>
       <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
     </div>
   );

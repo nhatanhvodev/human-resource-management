@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DashboardPage from "./DashboardPage";
@@ -26,9 +26,7 @@ describe("DashboardPage", () => {
     expect(await screen.findByText("Không tải được dữ liệu tổng quan")).toBeInTheDocument();
     expect(screen.getByText("Kiểm tra token, tenant và kết nối backend rồi tải lại trang.")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.queryByText("No data")).not.toBeInTheDocument();
-    });
+    expect(screen.queryByText("No data", { selector: ".ant-empty-description" })).not.toBeInTheDocument();
   });
 
   it("renders Vietnamese empty copy when there are no activities", async () => {

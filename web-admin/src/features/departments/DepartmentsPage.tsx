@@ -2,6 +2,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, Popconfirm, Space, Tabs } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -19,14 +20,16 @@ type Department = {
 const emptyPage: PageResponse<Department> = {
   items: [],
   page: 0,
-  size: 10,
+  size: 20,
   totalItems: 0,
   totalPages: 0
 };
 
 export default function DepartmentsPage() {
+  const { t } = useTranslation();
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [data, setData] = useState<PageResponse<Department>>(emptyPage);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -40,15 +43,15 @@ export default function DepartmentsPage() {
     setError(null);
     try {
       const response = await apiClient.get<PageResponse<Department>>("/departments", {
-        params: { page, size: 10, q: keyword || undefined }
+        params: { page, size: pageSize, q: keyword || undefined }
       });
       setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
     } catch {
-      setError("Không tải được danh sách phòng ban. Kiểm tra token, tenant và kết nối backend.");
+      setError(t("pages.departments.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [keyword, page]);
+  }, [keyword, page, pageSize, t]);
 
   useEffect(() => {
     void loadDepartments();
@@ -74,8 +77,8 @@ export default function DepartmentsPage() {
     } catch {
       setError(
         editingDepartment
-          ? "Không cập nhật được phòng ban. Kiểm tra dữ liệu bắt buộc hoặc mã phòng ban bị trùng."
-          : "Không tạo được phòng ban. Kiểm tra dữ liệu bắt buộc hoặc mã phòng ban bị trùng."
+          ? t("pages.departments.updateError")
+          : t("pages.departments.createError")
       );
     } finally {
       setSaving(false);
@@ -101,7 +104,7 @@ export default function DepartmentsPage() {
       await apiClient.delete(`/departments/${department.id}`);
       await loadDepartments();
     } catch {
-      setError("Không xóa được phòng ban. Có thể phòng ban vẫn còn nhân viên hoặc bạn thiếu quyền xóa.");
+      setError(t("pages.departments.deleteError"));
     } finally {
       setSaving(false);
     }
@@ -109,59 +112,66 @@ export default function DepartmentsPage() {
 
   const columns = useMemo<ColumnsType<Department>>(
     () => [
-      { title: "Mã phòng ban", dataIndex: "code", width: 180 },
-      { title: "Tên phòng ban", dataIndex: "name" },
+      { title: t("pages.departments.code"), dataIndex: "code", width: 180 },
+      { title: t("pages.departments.name"), dataIndex: "name" },
       {
-        title: "Thao tác",
+        title: t("common.actions"),
         key: "actions",
         width: 160,
         render: (_, row) => (
           <Space>
             <Button size="small" onClick={() => openEdit(row)}>
-              Sửa
+              {t("common.edit")}
             </Button>
             <Popconfirm
-              title="Xóa phòng ban?"
-              description="Thao tác này gọi API xóa thật và có thể bị từ chối nếu phòng ban còn dữ liệu liên quan."
-              okText="Xóa phòng ban"
-              cancelText="Hủy"
+              title={t("pages.departments.deleteTitle")}
+              description={t("pages.departments.deleteDescription")}
+              okText={t("pages.departments.deleteConfirm")}
+              cancelText={t("common.cancel")}
               okButtonProps={{ danger: true, loading: saving }}
               onConfirm={() => void deleteDepartment(row)}
             >
               <Button size="small" danger disabled={saving}>
-                Xóa
+                {t("common.delete")}
               </Button>
             </Popconfirm>
           </Space>
         )
       }
     ],
-    [saving]
+    [saving, t]
   );
 
   const pagination: TablePaginationConfig = {
     current: data.page + 1,
-    pageSize: data.size,
+    pageSize,
     total: data.totalItems,
-    onChange: (nextPage) => setPage(nextPage - 1)
+    onChange: (nextPage, nextPageSize) => {
+      if (nextPageSize !== pageSize) {
+        setPage(0);
+        setPageSize(nextPageSize);
+        return;
+      }
+      setPage(nextPage - 1);
+    }
   };
 
   return (
     <>
       <div className="page-header">
-        <h1>Phòng ban</h1>
-        <p>Quản lý mã, tên và cấu trúc phòng ban trong tổ chức.</p>
+        <h1>{t("pages.departments.title")}</h1>
+        <p>{t("pages.departments.subtitle")}</p>
       </div>
 
       <Tabs items={[
         {
-          key: "list", label: "Danh sách",
+          key: "list", label: t("pages.departments.list"),
           children: (
             <>
               <PageToolbar>
                 <Input.Search
                   allowClear
-                  placeholder="Tìm theo mã hoặc tên"
+                  placeholder={t("pages.departments.searchPlaceholder")}
                   style={{ width: 280 }}
                   onSearch={(value) => {
                     setPage(0);
@@ -169,7 +179,7 @@ export default function DepartmentsPage() {
                   }}
                 />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
-                  Thêm phòng ban
+                  {t("pages.departments.add")}
                 </Button>
               </PageToolbar>
 
@@ -186,21 +196,21 @@ export default function DepartmentsPage() {
           )
         },
         {
-          key: "chart", label: "Sơ đồ tổ chức",
+          key: "chart", label: t("pages.departments.orgChart"),
           children: <OrgChart />
         }
       ]} />
 
-      <FormDrawer open={openCreate} title={editingDepartment ? "Cập nhật phòng ban" : "Thêm phòng ban"} onClose={closeDrawer}>
+      <FormDrawer open={openCreate} title={editingDepartment ? t("pages.departments.update") : t("pages.departments.add")} onClose={closeDrawer}>
         <Form form={form} layout="vertical" onFinish={submitDepartment}>
-          <Form.Item label="Mã phòng ban" name="code" htmlFor="department-code" rules={[{ required: true, message: "Nhập mã phòng ban" }]}>
+          <Form.Item label={t("pages.departments.code")} name="code" htmlFor="department-code" rules={[{ required: true, message: t("pages.departments.enterCode") }]}>
             <Input id="department-code" />
           </Form.Item>
-          <Form.Item label="Tên phòng ban" name="name" htmlFor="department-name" rules={[{ required: true, message: "Nhập tên phòng ban" }]}>
+          <Form.Item label={t("pages.departments.name")} name="name" htmlFor="department-name" rules={[{ required: true, message: t("pages.departments.enterName") }]}>
             <Input id="department-name" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving}>
-            {editingDepartment ? "Lưu thay đổi" : "Tạo mới"}
+            {editingDepartment ? t("pages.employees.saveChanges") : t("common.createNew")}
           </Button>
         </Form>
       </FormDrawer>

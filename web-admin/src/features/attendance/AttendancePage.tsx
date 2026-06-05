@@ -1,6 +1,7 @@
 import { Alert, Button, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import type { PageResponse } from "../../shared/api/types";
@@ -18,6 +19,7 @@ type TimeEntry = {
 };
 
 export default function AttendancePage() {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +36,11 @@ export default function AttendancePage() {
       });
       setEntries(response.data.items ?? []);
     } catch {
-      setError("Không tải được danh sách chấm công.");
+      setError(t("pages.attendance.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, t]);
 
   useEffect(() => { void loadEntries(); }, [loadEntries]);
 
@@ -49,49 +51,49 @@ export default function AttendancePage() {
       await apiClient.post(`/time-entries/${id}/${action}`);
       await loadEntries();
     } catch {
-      setError(action === "approve" ? "Không duyệt được bản ghi." : "Không từ chối được bản ghi.");
+      setError(action === "approve" ? t("pages.attendance.approveError") : t("pages.attendance.rejectError"));
     } finally {
       setSaving(false);
     }
   };
 
   const entriesColumns = useMemo<ColumnsType<TimeEntry>>(() => [
-    { title: "Nhân viên", dataIndex: "employeeId", render: (v: string) => v.slice(0, 8) },
-    { title: "Ngày", dataIndex: "date", width: 120 },
-    { title: "Vào", dataIndex: "clockIn", width: 90 },
-    { title: "Ra", dataIndex: "clockOut", width: 90 },
-    { title: "Phút", dataIndex: "totalMinutes", width: 70 },
+    { title: t("common.employee"), dataIndex: "employeeId", render: (v: string) => v.slice(0, 8) },
+    { title: t("common.date"), dataIndex: "date", width: 120 },
+    { title: t("pages.attendance.clockIn"), dataIndex: "clockIn", width: 90 },
+    { title: t("pages.attendance.clockOut"), dataIndex: "clockOut", width: 90 },
+    { title: t("pages.attendance.minutes"), dataIndex: "totalMinutes", width: 70 },
     {
-      title: "Trạng thái", dataIndex: "status", width: 140,
+      title: t("common.status"), dataIndex: "status", width: 140,
       render: (v: string) => <StatusTag value={v} />
     },
     {
-      title: "Thao tác", key: "actions", width: 190,
+      title: t("common.actions"), key: "actions", width: 190,
       render: (_, row) => {
         const pending = row.status === "PENDING";
         return (
           <Space>
             <Button size="small" disabled={!pending || saving}
-              onClick={() => void transition(row.id, "approve")}>Duyệt</Button>
+              onClick={() => void transition(row.id, "approve")}>{t("common.approve")}</Button>
             <Button size="small" danger disabled={!pending || saving}
-              onClick={() => void transition(row.id, "reject")}>Từ chối</Button>
+              onClick={() => void transition(row.id, "reject")}>{t("common.reject")}</Button>
           </Space>
         );
       }
     }
-  ], [saving]);
+  ], [saving, t]);
 
   const tabItems = [
     {
-      key: "all", label: "Tất cả",
+      key: "all", label: t("common.all"),
       children: <AppTable<TimeEntry> rowKey="id" loading={loading} columns={entriesColumns} dataSource={entries} pagination={false} />
     },
     {
-      key: "pending", label: "Chờ duyệt",
+      key: "pending", label: t("status.PENDING"),
       children: <AppTable<TimeEntry> rowKey="id" loading={loading} columns={entriesColumns} dataSource={entries} pagination={false} />
     },
     {
-      key: "approved", label: "Đã duyệt",
+      key: "approved", label: t("status.APPROVED"),
       children: <AppTable<TimeEntry> rowKey="id" loading={loading} columns={entriesColumns} dataSource={entries} pagination={false} />
     }
   ];
@@ -99,8 +101,8 @@ export default function AttendancePage() {
   return (
     <>
       <div className="page-header">
-        <h1>Chấm công</h1>
-        <p>Quản lý bản ghi chấm công và duyệt đơn.</p>
+        <h1>{t("pages.attendance.title")}</h1>
+        <p>{t("pages.attendance.subtitle")}</p>
       </div>
       {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
