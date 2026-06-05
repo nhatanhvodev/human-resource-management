@@ -1,9 +1,10 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
-import { Spin } from "antd";
+import { Result, Spin } from "antd";
+import { useTranslation } from "react-i18next";
 
 import ErrorPage from "./ErrorPage";
-import { AdminShell } from "./layout/AdminShell";
+import { RoleShell } from "./layout/RoleShell";
 import { EmployeeShell } from "./layout/EmployeeShell";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import DepartmentsPage from "../features/departments/DepartmentsPage";
@@ -21,6 +22,8 @@ import CourseDetailPage from "../features/training/CourseDetailPage";
 import AssetsPage from "../features/assets/AssetsPage";
 import AnnouncementsPage from "../features/announcements/AnnouncementsPage";
 import AuditLogPage from "../features/audit/AuditLogPage";
+import AuthorizationPage from "../features/authorization/AuthorizationPage";
+import { hasAuthority } from "../shared/auth/jwt";
 
 const EssDashboardPage = lazy(() => import("../features/ess/EssDashboardPage"));
 const MyProfilePage = lazy(() => import("../features/ess/MyProfilePage"));
@@ -35,30 +38,54 @@ const Lazy = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={<Spin style={{ display: 'block', margin: '40px auto' }} />}>{children}</Suspense>
 );
 
+const RequireAuthority = ({ authority, children }: { authority: string; children: React.ReactNode }) => {
+  const { t } = useTranslation();
+  if (!hasAuthority(authority)) {
+    return <Result status="403" title="403" subTitle={t("auth.forbidden")} />;
+  }
+
+  return children;
+};
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <AdminShell />,
+    element: <RoleShell />,
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: "dashboard", element: <DashboardPage /> },
-      { path: "departments", element: <DepartmentsPage /> },
-      { path: "employees", element: <EmployeesPage /> },
-      { path: "recruitment", element: <RecruitmentPage /> },
-      { path: "leave", element: <LeavePage /> },
-      { path: "payroll", element: <PayrollPage /> },
-      { path: "performance", element: <PerformancePage /> },
-      { path: "attendance", element: <AttendancePage /> },
-      { path: "documents", element: <DocumentsPage /> },
-      { path: "onboarding", element: <OnboardingPage /> },
-      { path: "training", element: <TrainingPage /> },
-      { path: "training/courses/:id", element: <CourseDetailPage /> },
-      { path: "assets", element: <AssetsPage /> },
-      { path: "announcements", element: <AnnouncementsPage /> },
-      { path: "audit", element: <AuditLogPage /> },
+      { path: "dashboard", element: <RequireAuthority authority="dashboard:read"><DashboardPage /></RequireAuthority> },
+      { path: "departments", element: <RequireAuthority authority="department:read"><DepartmentsPage /></RequireAuthority> },
+      { path: "employees", element: <RequireAuthority authority="employee:read"><EmployeesPage /></RequireAuthority> },
+      { path: "recruitment", element: <RequireAuthority authority="recruitment:read"><RecruitmentPage /></RequireAuthority> },
+      { path: "leave", element: <RequireAuthority authority="leave:read"><LeavePage /></RequireAuthority> },
+      { path: "payroll", element: <RequireAuthority authority="payroll:read"><PayrollPage /></RequireAuthority> },
+      { path: "performance", element: <RequireAuthority authority="performance:read"><PerformancePage /></RequireAuthority> },
+      { path: "attendance", element: <RequireAuthority authority="attendance:read"><AttendancePage /></RequireAuthority> },
+      { path: "documents", element: <RequireAuthority authority="document:read"><DocumentsPage /></RequireAuthority> },
+      { path: "onboarding", element: <RequireAuthority authority="onboarding:read"><OnboardingPage /></RequireAuthority> },
+      { path: "training", element: <RequireAuthority authority="training:read"><TrainingPage /></RequireAuthority> },
+      { path: "training/courses/:id", element: <RequireAuthority authority="training:read"><CourseDetailPage /></RequireAuthority> },
+      { path: "assets", element: <RequireAuthority authority="asset:read"><AssetsPage /></RequireAuthority> },
+      { path: "announcements", element: <RequireAuthority authority="announcement:read"><AnnouncementsPage /></RequireAuthority> },
+      { path: "audit", element: <RequireAuthority authority="audit:read"><AuditLogPage /></RequireAuthority> },
+      { path: "authorization", element: <RequireAuthority authority="authz:read"><AuthorizationPage /></RequireAuthority> },
       { path: "settings", element: <DevSettingsPage /> }
+    ]
+  },
+  {
+    path: "/manager",
+    element: <RoleShell />,
+    errorElement: <ErrorPage />,
+    children: [
+      { index: true, element: <Navigate to="/manager/dashboard" replace /> },
+      { path: "dashboard", element: <RequireAuthority authority="dashboard:read"><DashboardPage /></RequireAuthority> },
+      { path: "employees", element: <RequireAuthority authority="employee:read"><EmployeesPage /></RequireAuthority> },
+      { path: "leave", element: <RequireAuthority authority="leave:read"><LeavePage /></RequireAuthority> },
+      { path: "attendance", element: <RequireAuthority authority="attendance:read"><AttendancePage /></RequireAuthority> },
+      { path: "documents", element: <RequireAuthority authority="document:read"><DocumentsPage /></RequireAuthority> },
+      { path: "training", element: <RequireAuthority authority="training:read"><TrainingPage /></RequireAuthority> },
+      { path: "announcements", element: <RequireAuthority authority="announcement:read"><AnnouncementsPage /></RequireAuthority> },
     ]
   },
   {
