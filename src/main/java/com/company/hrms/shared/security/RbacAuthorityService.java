@@ -1,10 +1,17 @@
 package com.company.hrms.shared.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.company.hrms.shared.interfaces.api.PageResponse;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Types;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +19,7 @@ import java.util.UUID;
 @Service
 public class RbacAuthorityService {
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public RbacAuthorityService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -94,6 +102,13 @@ public class RbacAuthorityService {
             "insert into security_role_permission (role_id, permission_code) values (?, ?)",
             permissionCodes.stream().distinct().map(code -> new Object[] { roleId, code }).toList()
         );
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "ROLE_PERMISSIONS_CHANGED", "ROLE", roleId,
+                    "{\"permissionCodes\": " + objectMapper.writeValueAsString(permissionCodes) + "}");
+            } catch (Exception ignored) {}
+        }
     }
 
     @Transactional
@@ -105,6 +120,217 @@ public class RbacAuthorityService {
             "insert into security_user_role (user_id, role_id) values (?, ?)",
             roleIds.stream().distinct().map(roleId -> new Object[] { userId, roleId }).toList()
         );
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "USER_ROLES_CHANGED", "USER", userId,
+                    "{\"roleIds\": " + objectMapper.writeValueAsString(roleIds) + "}");
+            } catch (Exception ignored) {}
+        }
+    }
+
+    // ── Task 5: Role CRUD + User management ──
+
+    @Transactional
+    public RoleResponse createRole(String tenantId, String code, String name, String description, UUID templateRoleId) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update(
+            "insert into security_role (id, tenant_id, code, name, description, system_role, created_at, updated_at) values (?, ?, ?, ?, ?, false, now(), now())",
+            id, tenantId, code, name, description
+        );
+        if (templateRoleId != null) {
+            List<String> templatePermissions = listPermissionCodesForRole(templateRoleId);
+            if (!templatePermissions.isEmpty()) {
+                jdbcTemplate.batchUpdate(
+                    "insert into security_role_permission (role_id, permission_code) values (?, ?)",
+                    templatePermissions.stream().map(pc -> new Object[] { id, pc }).toList()
+                );
+            }
+        }
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "ROLE_CREATED", "ROLE", id,
+                    "{\"code\": \"" + code + "\", \"name\": \"" + name + "\"}");
+            } catch (Exception ignored) {}
+        }
+        return new RoleResponse(id, code, name, description, false, templateRoleId != null ? listPermissionCodesForRole(id) : List.of());
+    }
+
+    @Transactional
+    public void deleteRole(String tenantId, UUID roleId) {
+        Integer isSystem = jdbcTemplate.queryForObject(
+            "select count(*) from security_role where tenant_id = ? and id = ? and system_role = true",
+            Integer.class, tenantId, roleId
+        );
+        if (isSystem != null && isSystem > 0) {
+            throw new IllegalArgumentException("Cannot delete system role");
+        }
+        jdbcTemplate.update("delete from security_role where tenant_id = ? and id = ?", tenantId, roleId);
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "ROLE_DELETED", "ROLE", roleId, null);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    @Transactional
+    public UserResponse createUser(String tenantId, String username, String displayName, UUID employeeId) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update(
+            "insert into app_user (id, tenant_id, username, display_name, employee_id, enabled, created_at, updated_at) values (?, ?, ?, ?, ?, true, now(), now())",
+            id, tenantId, username, displayName, employeeId
+        );
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "USER_CREATED", "USER", id,
+                    "{\"username\": \"" + username + "\"}");
+            } catch (Exception ignored) {}
+        }
+        return new UserResponse(id, username, displayName, employeeId, true, List.of());
+    }
+
+    @Transactional
+    public void setUserEnabled(String tenantId, UUID userId, boolean enabled) {
+        assertUserInTenant(tenantId, userId);
+        jdbcTemplate.update("update app_user set enabled = ?, updated_at = now() where id = ?", enabled, userId);
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, enabled ? "USER_ENABLED" : "USER_DISABLED", "USER", userId, null);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    // ── Task 6: Department scope management ──
+
+    public List<UUID> getUserScopes(String tenantId, UUID userId) {
+        assertUserInTenant(tenantId, userId);
+        return listScopedDepartmentIds(userId);
+    }
+
+    @Transactional
+    public void setUserScopes(String tenantId, UUID userId, List<UUID> departmentIds) {
+        assertUserInTenant(tenantId, userId);
+        jdbcTemplate.update("delete from security_role_scope where user_id = ?", userId);
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            jdbcTemplate.batchUpdate(
+                "insert into security_role_scope (id, user_id, department_id) values (?, ?, ?)",
+                departmentIds.stream().distinct().map(deptId -> new Object[] { UUID.randomUUID(), userId, deptId }).toList()
+            );
+        }
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "USER_SCOPES_CHANGED", "USER", userId,
+                    "{\"departmentIds\": " + objectMapper.writeValueAsString(departmentIds) + "}");
+            } catch (Exception ignored) {}
+        }
+    }
+
+    // ── Task 8: Audit trail ──
+
+    private void auditLog(String tenantId, UUID actorId, String action, String targetType, UUID targetId, String detailJson) {
+        jdbcTemplate.update(
+            "insert into security_audit_log (id, tenant_id, actor_id, action, target_type, target_id, detail) values (?, ?, ?, ?, ?, ?, ?::jsonb)",
+            UUID.randomUUID(), tenantId, actorId, action, targetType, targetId, detailJson
+        );
+    }
+
+    public record AuditEntry(UUID id, UUID actorId, String action, String targetType, UUID targetId, String detail, Instant createdAt) {}
+
+    public PageResponse<AuditEntry> listAudit(String tenantId, Pageable pageable) {
+        List<AuditEntry> items = jdbcTemplate.query(
+            "select id, actor_id, action, target_type, target_id, detail, created_at from security_audit_log where tenant_id = ? order by created_at desc limit ? offset ?",
+            (rs, rowNum) -> new AuditEntry(
+                rs.getObject("id", UUID.class),
+                rs.getObject("actor_id", UUID.class),
+                rs.getString("action"),
+                rs.getString("target_type"),
+                rs.getObject("target_id", UUID.class),
+                rs.getString("detail"),
+                rs.getTimestamp("created_at").toInstant()
+            ),
+            tenantId, pageable.getPageSize(), pageable.getOffset()
+        );
+        Long total = jdbcTemplate.queryForObject("select count(*) from security_audit_log where tenant_id = ?", Long.class, tenantId);
+        long totalItems = total != null ? total : 0;
+        int totalPages = pageable.getPageSize() > 0 ? (int) Math.ceil((double) totalItems / pageable.getPageSize()) : 0;
+        return new PageResponse<>(items, pageable.getPageNumber(), pageable.getPageSize(), totalItems, totalPages);
+    }
+
+    private UUID currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            String subject = jwtAuth.getToken().getSubject();
+            return parseUuid(subject);
+        }
+        return null;
+    }
+
+    // ── Task 9: IdP group-to-role mapping ──
+
+    public List<UUID> resolveIdpRoleIds(String tenantId, List<String> idpGroups) {
+        if (idpGroups == null || idpGroups.isEmpty()) return List.of();
+        return jdbcTemplate.queryForList(
+            "select distinct role_id from security_idp_mapping where tenant_id = ? and idp_group = any(?)",
+            UUID.class, tenantId, (Object) idpGroups.toArray(new String[0])
+        );
+    }
+
+    public List<String> listPermissionCodesForRoles(List<UUID> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) return List.of();
+        return jdbcTemplate.queryForList(
+            "select distinct rp.permission_code from security_role_permission rp where rp.role_id = any(?) order by rp.permission_code",
+            String.class, (Object) roleIds.toArray(new UUID[0])
+        );
+    }
+
+    public record IdpMappingResponse(UUID id, String idpGroup, UUID roleId, String roleCode) {}
+
+    public List<IdpMappingResponse> listIdpMappings(String tenantId) {
+        return jdbcTemplate.query(
+            "select im.id, im.idp_group, im.role_id, r.code from security_idp_mapping im join security_role r on r.id = im.role_id where im.tenant_id = ? order by im.idp_group",
+            (rs, rowNum) -> new IdpMappingResponse(
+                rs.getObject("id", UUID.class),
+                rs.getString("idp_group"),
+                rs.getObject("role_id", UUID.class),
+                rs.getString("code")
+            ),
+            tenantId
+        );
+    }
+
+    @Transactional
+    public IdpMappingResponse createIdpMapping(String tenantId, String idpGroup, UUID roleId) {
+        assertRoleInTenant(tenantId, roleId);
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update(
+            "insert into security_idp_mapping (id, tenant_id, idp_group, role_id) values (?, ?, ?, ?)",
+            id, tenantId, idpGroup, roleId
+        );
+        String roleCode = jdbcTemplate.queryForObject("select code from security_role where id = ?", String.class, roleId);
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "IDP_MAPPING_CREATED", "IDP_MAPPING", id,
+                    "{\"idpGroup\": \"" + idpGroup + "\", \"roleId\": \"" + roleId + "\"}");
+            } catch (Exception ignored) {}
+        }
+        return new IdpMappingResponse(id, idpGroup, roleId, roleCode);
+    }
+
+    @Transactional
+    public void deleteIdpMapping(String tenantId, UUID mappingId) {
+        jdbcTemplate.update("delete from security_idp_mapping where tenant_id = ? and id = ?", tenantId, mappingId);
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "IDP_MAPPING_DELETED", "IDP_MAPPING", mappingId, null);
+            } catch (Exception ignored) {}
+        }
     }
 
     private Optional<UserRow> findUser(String tenantId, String subject, String employeeId) {

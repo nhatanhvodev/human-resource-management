@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
@@ -160,10 +161,25 @@ public class SecurityConfig {
                 jwt.getSubject(),
                 jwt.getClaimAsString("employee_id")
             );
-            Collection<GrantedAuthority> authorities = access.authorities().stream()
+
+            // Merge IdP-mapped role permissions
+            List<String> idpGroups = jwt.getClaimAsStringList("groups");
+            List<String> idpPermissions = List.of();
+            if (idpGroups != null && !idpGroups.isEmpty()) {
+                List<UUID> idpRoleIds = rbacAuthorityService.resolveIdpRoleIds(tenantId, idpGroups);
+                if (!idpRoleIds.isEmpty()) {
+                    idpPermissions = rbacAuthorityService.listPermissionCodesForRoles(idpRoleIds);
+                }
+            }
+
+            Collection<GrantedAuthority> authorities = new java.util.ArrayList<>();
+            authorities.addAll(access.authorities().stream()
                 .map(SimpleGrantedAuthority::new)
-                .map(GrantedAuthority.class::cast)
-                .toList();
+                .toList());
+            authorities.addAll(idpPermissions.stream()
+                .map(SimpleGrantedAuthority::new)
+                .toList());
+
             return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
         };
     }
