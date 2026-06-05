@@ -37,11 +37,16 @@ export function ManagerShell() {
   const selectedKey = navItems.find((item) => location.pathname.startsWith(item.key))?.key ?? "/manager/dashboard";
   const menuItems = navItems.map((item) => ({ key: item.key, icon: item.icon, label: t(item.labelKey) }));
 
+  const onNavigate = (key: string) => {
+    navigate(key);
+    setMobileNavOpen(false);
+  };
+
   return (
     <Layout className="app-shell">
       <Sider className="app-shell__sider" width={232} theme="light" breakpoint="lg" collapsedWidth={0} trigger={null}>
         <div className="app-shell__brand">{t("app.managerBrand")}</div>
-        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} onClick={({ key }) => navigate(key)} />
+        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} onClick={({ key }) => onNavigate(key)} />
       </Sider>
       <Layout>
         <Header className="app-shell__header">
@@ -72,7 +77,7 @@ export function ManagerShell() {
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
       >
-        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} onClick={({ key }) => navigate(key)} />
+        <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} onClick={({ key }) => onNavigate(key)} />
       </Drawer>
     </Layout>
   );

@@ -509,7 +509,18 @@
       "savePermissions": "Lưu quyền",
       "saveRoles": "Lưu vai trò",
       "noRole": "Chọn một vai trò",
-      "noUser": "Chọn một người dùng"
+      "noUser": "Chọn một người dùng",
+      "newRole": "Tạo vai trò",
+      "createRole": "Tạo vai trò",
+      "deleteRole": "Xóa vai trò",
+      "deleteRoleConfirm": "Bạn có chắc muốn xóa vai trò này?",
+      "templateRole": "Sao chép từ mẫu",
+      "noTemplate": "Không (vai trò trống)",
+      "code": "Mã",
+      "systemRole": "Vai trò hệ thống",
+      "toggleUser": "Bật/tắt người dùng",
+      "newUser": "Người dùng mới",
+      "createUser": "Tạo người dùng"
     }
   }
 }

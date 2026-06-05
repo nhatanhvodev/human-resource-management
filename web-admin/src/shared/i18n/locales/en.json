@@ -281,7 +281,18 @@
       "savePermissions": "Save permissions",
       "saveRoles": "Save roles",
       "noRole": "Select a role",
-      "noUser": "Select a user"
+      "noUser": "Select a user",
+      "newRole": "New Role",
+      "createRole": "Create Role",
+      "deleteRole": "Delete Role",
+      "deleteRoleConfirm": "Are you sure you want to delete this role?",
+      "templateRole": "Copy from template",
+      "noTemplate": "None (empty role)",
+      "code": "Code",
+      "systemRole": "System Role",
+      "toggleUser": "Toggle enabled",
+      "newUser": "New User",
+      "createUser": "Create User"
     },
     "announcements": {
       "title": "Announcements",
