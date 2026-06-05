@@ -221,7 +221,15 @@
       "salary": "Salary",
       "skill": "Skill",
       "proficiency": "Proficiency",
-      "relationship": "Relationship"
+      "relationship": "Relationship",
+      "manager": "Manager",
+      "selectManager": "Select manager",
+      "deleteTitle": "Delete employee",
+      "deleteDescription": "Are you sure you want to delete {{name}}? This action cannot be undone.",
+      "deleteError": "Unable to delete employee. Check permission or referential constraints.",
+      "deleteSuccess": "Employee deleted successfully.",
+      "managerAssigned": "Manager assigned successfully.",
+      "managerAssignError": "Unable to assign manager."
     },
     "attendance": {
       "title": "Attendance",

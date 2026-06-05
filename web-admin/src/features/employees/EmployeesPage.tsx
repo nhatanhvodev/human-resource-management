@@ -1,10 +1,12 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Descriptions, Drawer, Form, Input, Segmented, Select, Space, Tabs } from "antd";
+import { Alert, Button, Descriptions, Drawer, Form, Input, message, Popconfirm, Segmented, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { TablePaginationConfig } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { hasAuthority } from "../../shared/auth/jwt";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -22,6 +24,8 @@ type Employee = {
   phone?: string;
   positionId?: string;
   positionTitle?: string;
+  managerId?: string;
+  managerName?: string;
   dateOfBirth?: string;
   gender?: string;
   nationalId?: string;
@@ -67,19 +71,24 @@ type EmergencyContact = {
 const emptyPage: PageResponse<Employee> = {
   items: [],
   page: 0,
-  size: 10,
+  size: 20,
   totalItems: 0,
   totalPages: 0
 };
 
 export default function EmployeesPage() {
+  const { t, i18n } = useTranslation();
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [data, setData] = useState<PageResponse<Employee>>(emptyPage);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [managerSaving, setManagerSaving] = useState(false);
+  const [managerEmployeeId, setManagerEmployeeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
@@ -109,16 +118,16 @@ export default function EmployeesPage() {
     setError(null);
     try {
       const response = await apiClient.get<PageResponse<Employee>>("/employees", {
-        params: { page, size: 10, status: status === "ALL" ? undefined : status }
+        params: { page, size: pageSize, status: status === "ALL" ? undefined : status }
       });
       setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
     } catch {
       setData(emptyPage);
-      setError("Không tải được danh sách nhân viên");
+      setError(t("pages.employees.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [page, status]);
+  }, [page, pageSize, status, t]);
 
   const loadDepartments = useCallback(async () => {
     try {
@@ -176,6 +185,7 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     if (detailEmployee) {
+      setManagerEmployeeId(detailEmployee.managerId ?? null);
       void loadEmployeeDetail(detailEmployee.id);
     } else {
       setDetailContracts([]);
@@ -235,8 +245,8 @@ export default function EmployeesPage() {
     } catch {
       setError(
         editingEmployee
-          ? "Không cập nhật được nhân viên. Kiểm tra họ tên, phòng ban và ngày vào làm."
-          : "Không tạo được nhân viên. Kiểm tra mã nhân viên, phòng ban và dữ liệu bắt buộc."
+          ? t("pages.employees.updateError")
+          : t("pages.employees.createError")
       );
     } finally {
       setSaving(false);
@@ -277,21 +287,58 @@ export default function EmployeesPage() {
       await apiClient.patch(`/employees/${employee.id}/status`, { employmentStatus: nextStatus });
       await loadEmployees();
     } catch {
-      setError("Không đổi được trạng thái nhân viên. Kiểm tra quyền cập nhật hoặc trạng thái hiện tại.");
+      setError(t("pages.employees.statusError"));
     } finally {
       setSaving(false);
     }
   };
 
+  const deleteEmployee = async (id: string) => {
+    setDeleting(true);
+    setError(null);
+    try {
+      await apiClient.delete(`/employees/${id}`);
+      await loadEmployees();
+      message.success(t("pages.employees.deleteSuccess"));
+    } catch {
+      setError(t("pages.employees.deleteError"));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const assignManager = async (employeeId: string, managerId: string | null) => {
+    if (!managerId) return;
+    setManagerSaving(true);
+    try {
+      await apiClient.put(`/employees/${employeeId}/manager`, { managerId });
+      message.success(t("pages.employees.managerAssigned"));
+      // Update local detail state
+      if (detailEmployee?.id === employeeId) {
+        const mgr = data.items.find((e) => e.id === managerId);
+        setDetailEmployee({
+          ...detailEmployee,
+          managerId,
+          managerName: mgr?.fullName ?? managerId
+        });
+      }
+      setManagerEmployeeId(null);
+    } catch {
+      message.error(t("pages.employees.managerAssignError"));
+    } finally {
+      setManagerSaving(false);
+    }
+  };
+
   const columns = useMemo<ColumnsType<Employee>>(
     () => [
-      { title: "Mã nhân viên", dataIndex: "employeeNo", width: 160 },
-      { title: "Họ và tên", dataIndex: "fullName" },
-      { title: "Email", dataIndex: "email", width: 200, ellipsis: true },
-      { title: "Số điện thoại", dataIndex: "phone", width: 130 },
-      { title: "Vị trí", dataIndex: "positionTitle", width: 160 },
+      { title: t("pages.employees.employeeNo"), dataIndex: "employeeNo", width: 160 },
+      { title: t("pages.employees.fullName"), dataIndex: "fullName" },
+      { title: t("common.email"), dataIndex: "email", width: 200, ellipsis: true },
+      { title: t("pages.employees.phone"), dataIndex: "phone", width: 130 },
+      { title: t("common.position"), dataIndex: "positionTitle", width: 160 },
       {
-        title: "Phòng ban",
+        title: t("common.department"),
         dataIndex: "departmentId",
         width: 220,
         render: (value: string) => {
@@ -299,77 +346,105 @@ export default function EmployeesPage() {
           return department ? `${department.code} - ${department.name}` : value;
         }
       },
-      { title: "Ngày vào làm", dataIndex: "hireDate", width: 140 },
+      { title: t("pages.employees.hireDate"), dataIndex: "hireDate", width: 140 },
       {
-        title: "Trạng thái",
+        title: t("common.status"),
         dataIndex: "employmentStatus",
         width: 160,
         render: (value: string) => <StatusTag value={value} />
       },
       {
-        title: "Thao tác",
+        title: t("pages.employees.manager"),
+        dataIndex: "managerName",
+        width: 200,
+        ellipsis: true,
+        render: (value: string) => value ?? "-"
+      },
+      {
+        title: t("common.actions"),
         key: "actions",
-        width: 300,
+        width: 380,
         render: (_, row) => (
           <Space>
             <Button size="small" onClick={() => openEdit(row)}>
-              Sửa
+              {t("common.edit")}
             </Button>
             <Button size="small" onClick={() => setDetailEmployee(row)}>
-              Chi tiết
+              {t("common.detail")}
             </Button>
             <Button size="small" disabled={saving} onClick={() => void changeEmployeeStatus(row)}>
-              {row.employmentStatus === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+              {row.employmentStatus === "ACTIVE" ? t("common.deactivate") : t("common.activate")}
             </Button>
+            {hasAuthority("employee:delete") && (
+              <Popconfirm
+                title={t("pages.employees.deleteTitle")}
+                description={t("pages.employees.deleteDescription", { name: row.fullName })}
+                okText={t("common.delete")}
+                cancelText={t("common.cancel")}
+                okButtonProps={{ danger: true, loading: deleting }}
+                onConfirm={() => void deleteEmployee(row.id)}
+              >
+                <Button size="small" danger disabled={deleting}>
+                  {t("common.delete")}
+                </Button>
+              </Popconfirm>
+            )}
           </Space>
         )
       }
     ],
-    [departmentById, saving]
+    [departmentById, saving, deleting, t]
   );
 
   const pagination: TablePaginationConfig = {
     current: data.page + 1,
-    pageSize: data.size,
+    pageSize,
     total: data.totalItems,
-    onChange: (nextPage) => setPage(nextPage - 1)
+    onChange: (nextPage, nextPageSize) => {
+      if (nextPageSize !== pageSize) {
+        setPage(0);
+        setPageSize(nextPageSize);
+        return;
+      }
+      setPage(nextPage - 1);
+    }
   };
 
   const detailDepartment = detailEmployee ? departmentById.get(detailEmployee.departmentId) : undefined;
-  const isLoadError = error === "Không tải được danh sách nhân viên";
+  const isLoadError = error === t("pages.employees.loadError");
 
   const contractColumns: ColumnsType<EmployeeContract> = [
-    { title: "Loại hợp đồng", dataIndex: "contractType" },
-    { title: "Ngày bắt đầu", dataIndex: "startDate" },
-    { title: "Ngày kết thúc", dataIndex: "endDate" },
-    { title: "Lương", dataIndex: "salary", render: (value: number) => value?.toLocaleString("vi-VN") }
+    { title: t("pages.employees.contractType"), dataIndex: "contractType" },
+    { title: t("pages.employees.startDate"), dataIndex: "startDate" },
+    { title: t("pages.employees.endDate"), dataIndex: "endDate" },
+    { title: t("pages.employees.salary"), dataIndex: "salary", render: (value: number) => value?.toLocaleString(i18n.language === "en" ? "en-US" : "vi-VN") }
   ];
 
   const skillColumns: ColumnsType<EmployeeSkill> = [
-    { title: "Kỹ năng", dataIndex: "skillName" },
-    { title: "Trình độ", dataIndex: "proficiencyLevel" }
+    { title: t("pages.employees.skill"), dataIndex: "skillName" },
+    { title: t("pages.employees.proficiency"), dataIndex: "proficiencyLevel" }
   ];
 
   const emergencyContactColumns: ColumnsType<EmergencyContact> = [
-    { title: "Họ và tên", dataIndex: "fullName" },
-    { title: "Quan hệ", dataIndex: "relationship" },
-    { title: "Số điện thoại", dataIndex: "phone" }
+    { title: t("pages.employees.fullName"), dataIndex: "fullName" },
+    { title: t("pages.employees.relationship"), dataIndex: "relationship" },
+    { title: t("pages.employees.phone"), dataIndex: "phone" }
   ];
 
   return (
     <>
       <div className="page-header">
-        <h1>Nhân viên</h1>
-        <p>Tìm kiếm, cập nhật hồ sơ và quản lý trạng thái làm việc của nhân viên.</p>
+        <h1>{t("pages.employees.title")}</h1>
+        <p>{t("pages.employees.subtitle")}</p>
       </div>
 
       <PageToolbar>
         <Segmented
           value={status}
           options={[
-            { label: "Tất cả", value: "ALL" },
-            { label: "Đang làm việc", value: "ACTIVE" },
-            { label: "Ngừng hoạt động", value: "INACTIVE" }
+            { label: t("common.all"), value: "ALL" },
+            { label: t("status.ACTIVE"), value: "ACTIVE" },
+            { label: t("status.INACTIVE"), value: "INACTIVE" }
           ]}
           onChange={(value) => {
             setPage(0);
@@ -377,7 +452,7 @@ export default function EmployeesPage() {
           }}
         />
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>
-          Thêm nhân viên
+          {t("pages.employees.add")}
         </Button>
       </PageToolbar>
 
@@ -386,7 +461,7 @@ export default function EmployeesPage() {
           type="warning"
           showIcon
           message={error}
-          description={isLoadError ? "Kiểm tra token, tenant và kết nối backend rồi tải lại trang." : undefined}
+          description={isLoadError ? t("pages.employees.loadErrorDescription") : undefined}
           style={{ marginBottom: 16 }}
         />
       ) : null}
@@ -398,14 +473,18 @@ export default function EmployeesPage() {
           dataSource={data.items}
           columns={columns}
           pagination={pagination}
+          scroll={{ y: "calc(100vh - 340px)" }}
         />
       )}
 
       <Drawer
-        title="Chi tiết nhân viên"
+        title={t("pages.employees.detailTitle")}
         width="min(720px, calc(100vw - 32px))"
         open={Boolean(detailEmployee)}
-        onClose={() => setDetailEmployee(null)}
+        onClose={() => {
+          setDetailEmployee(null);
+          setManagerEmployeeId(null);
+        }}
       >
         {detailEmployee ? (
           <Tabs
@@ -413,33 +492,58 @@ export default function EmployeesPage() {
             items={[
               {
                 key: "profile",
-                label: "Hồ sơ",
+                label: t("pages.employees.profile"),
                 children: (
                   <Descriptions bordered column={1} size="middle">
-                    <Descriptions.Item label="Mã nhân viên">{detailEmployee.employeeNo}</Descriptions.Item>
-                    <Descriptions.Item label="Họ và tên">{detailEmployee.fullName}</Descriptions.Item>
-                    <Descriptions.Item label="Phòng ban">
+                    <Descriptions.Item label={t("pages.employees.employeeNo")}>{detailEmployee.employeeNo}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.fullName")}>{detailEmployee.fullName}</Descriptions.Item>
+                    <Descriptions.Item label={t("common.department")}>
                       {detailDepartment ? `${detailDepartment.code} - ${detailDepartment.name}` : detailEmployee.departmentId}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Ngày vào làm">{detailEmployee.hireDate}</Descriptions.Item>
-                    <Descriptions.Item label="Trạng thái"><StatusTag value={detailEmployee.employmentStatus} /></Descriptions.Item>
-                    <Descriptions.Item label="Email">{detailEmployee.email ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Số điện thoại">{detailEmployee.phone ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Vị trí">{detailEmployee.positionTitle ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Ngày sinh">{detailEmployee.dateOfBirth ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Giới tính">
-                      {detailEmployee.gender === "MALE" ? "Nam" : detailEmployee.gender === "FEMALE" ? "Nữ" : detailEmployee.gender === "OTHER" ? "Khác" : "-"}
+                    <Descriptions.Item label={t("pages.employees.hireDate")}>{detailEmployee.hireDate}</Descriptions.Item>
+                    <Descriptions.Item label={t("common.status")}><StatusTag value={detailEmployee.employmentStatus} /></Descriptions.Item>
+                    <Descriptions.Item label={t("common.email")}>{detailEmployee.email ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.phone")}>{detailEmployee.phone ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("common.position")}>{detailEmployee.positionTitle ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.manager")}>
+                      <Space>
+                        <span>{detailEmployee.managerName ?? "-"}</span>
+                        <Select
+                          style={{ width: 280 }}
+                          placeholder={t("pages.employees.selectManager")}
+                          showSearch
+                          allowClear
+                          filterOption={(input, option) =>
+                            ((option?.label as string) ?? "").toLowerCase().includes(input.toLowerCase())
+                          }
+                          options={data.items
+                            .filter((e) => e.id !== detailEmployee.id)
+                            .map((e) => ({ value: e.id, label: `${e.fullName} (${e.employeeNo})` }))}
+                          value={managerEmployeeId}
+                          onChange={(value) => {
+                            setManagerEmployeeId(value);
+                            if (value) {
+                              void assignManager(detailEmployee.id, value);
+                            }
+                          }}
+                          loading={managerSaving}
+                        />
+                      </Space>
                     </Descriptions.Item>
-                    <Descriptions.Item label="CMND/CCCD">{detailEmployee.nationalId ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Địa chỉ">{detailEmployee.address ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Số tài khoản">{detailEmployee.bankAccount ?? "-"}</Descriptions.Item>
-                    <Descriptions.Item label="Mã số thuế">{detailEmployee.taxCode ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.dateOfBirth")}>{detailEmployee.dateOfBirth ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.gender")}>
+                      {detailEmployee.gender ? t(`gender.${detailEmployee.gender}`, detailEmployee.gender) : "-"}
+                    </Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.nationalId")}>{detailEmployee.nationalId ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.address")}>{detailEmployee.address ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.bankAccount")}>{detailEmployee.bankAccount ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("pages.employees.taxCode")}>{detailEmployee.taxCode ?? "-"}</Descriptions.Item>
                   </Descriptions>
                 )
               },
               {
                 key: "contracts",
-                label: "Hợp đồng",
+                label: t("pages.employees.contracts"),
                 children: (
                   <AppTable<EmployeeContract>
                     rowKey="id"
@@ -452,7 +556,7 @@ export default function EmployeesPage() {
               },
               {
                 key: "skills",
-                label: "Kỹ năng",
+                label: t("pages.employees.skills"),
                 children: (
                   <AppTable<EmployeeSkill>
                     rowKey="id"
@@ -465,7 +569,7 @@ export default function EmployeesPage() {
               },
               {
                 key: "emergency",
-                label: "Liên hệ khẩn cấp",
+                label: t("pages.employees.emergencyContacts"),
                 children: (
                   <AppTable<EmergencyContact>
                     rowKey="id"
@@ -481,68 +585,68 @@ export default function EmployeesPage() {
         ) : null}
       </Drawer>
 
-      <FormDrawer open={openCreate} title={editingEmployee ? "Cập nhật nhân viên" : "Thêm nhân viên"} onClose={closeDrawer}>
+      <FormDrawer open={openCreate} title={editingEmployee ? t("pages.employees.update") : t("pages.employees.add")} onClose={closeDrawer}>
         <Form form={form} layout="vertical" onFinish={submitEmployee}>
-          <Form.Item label="Mã nhân viên" name="employeeNo" htmlFor="employee-code" rules={[{ required: !editingEmployee, message: "Nhập mã nhân viên" }]}>
+          <Form.Item label={t("pages.employees.employeeNo")} name="employeeNo" htmlFor="employee-code" rules={[{ required: !editingEmployee, message: t("pages.employees.enterEmployeeNo") }]}>
             <Input id="employee-code" disabled={Boolean(editingEmployee)} />
           </Form.Item>
-          <Form.Item label="Họ và tên" name="fullName" htmlFor="employee-name" rules={[{ required: true, message: "Nhập họ và tên" }]}>
+          <Form.Item label={t("pages.employees.fullName")} name="fullName" htmlFor="employee-name" rules={[{ required: true, message: t("pages.employees.enterFullName") }]}>
             <Input id="employee-name" />
           </Form.Item>
-          <Form.Item label="Phòng ban" name="departmentId" htmlFor="employee-department" rules={[{ required: true, message: "Chọn phòng ban" }]}>
+          <Form.Item label={t("common.department")} name="departmentId" htmlFor="employee-department" rules={[{ required: true, message: t("pages.employees.chooseDepartment") }]}>
             <Select
               id="employee-department"
-              placeholder="Chọn phòng ban"
+              placeholder={t("pages.employees.selectDepartment")}
               options={departments.map((department) => ({
                 value: department.id,
                 label: `${department.code} - ${department.name}`
               }))}
             />
           </Form.Item>
-          <Form.Item label="Ngày vào làm" name="hireDate" htmlFor="employee-hire-date" rules={[{ required: true, message: "Chọn ngày vào làm" }]}>
+          <Form.Item label={t("pages.employees.hireDate")} name="hireDate" htmlFor="employee-hire-date" rules={[{ required: true, message: t("pages.employees.chooseHireDate") }]}>
             <Input id="employee-hire-date" type="date" />
           </Form.Item>
-          <Form.Item label="Email" name="email" htmlFor="employee-email">
+          <Form.Item label={t("common.email")} name="email" htmlFor="employee-email">
             <Input id="employee-email" type="email" />
           </Form.Item>
-          <Form.Item label="Số điện thoại" name="phone" htmlFor="employee-phone">
+          <Form.Item label={t("pages.employees.phone")} name="phone" htmlFor="employee-phone">
             <Input id="employee-phone" />
           </Form.Item>
-          <Form.Item label="Ngày sinh" name="dateOfBirth" htmlFor="employee-dob">
+          <Form.Item label={t("pages.employees.dateOfBirth")} name="dateOfBirth" htmlFor="employee-dob">
             <Input id="employee-dob" type="date" />
           </Form.Item>
-          <Form.Item label="Giới tính" name="gender" htmlFor="employee-gender">
+          <Form.Item label={t("pages.employees.gender")} name="gender" htmlFor="employee-gender">
             <Select
               id="employee-gender"
-              placeholder="Chọn giới tính"
+              placeholder={t("pages.employees.selectGender")}
               options={[
-                { value: "MALE", label: "Nam" },
-                { value: "FEMALE", label: "Nữ" },
-                { value: "OTHER", label: "Khác" }
+                { value: "MALE", label: t("gender.MALE") },
+                { value: "FEMALE", label: t("gender.FEMALE") },
+                { value: "OTHER", label: t("gender.OTHER") }
               ]}
             />
           </Form.Item>
-          <Form.Item label="CMND/CCCD" name="nationalId" htmlFor="employee-national-id">
+          <Form.Item label={t("pages.employees.nationalId")} name="nationalId" htmlFor="employee-national-id">
             <Input id="employee-national-id" />
           </Form.Item>
-          <Form.Item label="Địa chỉ" name="address" htmlFor="employee-address">
+          <Form.Item label={t("pages.employees.address")} name="address" htmlFor="employee-address">
             <Input id="employee-address" />
           </Form.Item>
-          <Form.Item label="Số tài khoản" name="bankAccount" htmlFor="employee-bank">
+          <Form.Item label={t("pages.employees.bankAccount")} name="bankAccount" htmlFor="employee-bank">
             <Input id="employee-bank" />
           </Form.Item>
-          <Form.Item label="Mã số thuế" name="taxCode" htmlFor="employee-tax">
+          <Form.Item label={t("pages.employees.taxCode")} name="taxCode" htmlFor="employee-tax">
             <Input id="employee-tax" />
           </Form.Item>
-          <Form.Item label="Vị trí" name="positionId" htmlFor="employee-position">
+          <Form.Item label={t("common.position")} name="positionId" htmlFor="employee-position">
             <Select
               id="employee-position"
-              placeholder="Chọn vị trí"
+              placeholder={t("pages.employees.selectPosition")}
               options={positions.map((p) => ({ value: p.id, label: p.title }))}
             />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving} disabled={!departments.length}>
-            {editingEmployee ? "Lưu thay đổi" : "Lưu nhân viên"}
+            {editingEmployee ? t("pages.employees.saveChanges") : t("pages.employees.saveEmployee")}
           </Button>
         </Form>
       </FormDrawer>

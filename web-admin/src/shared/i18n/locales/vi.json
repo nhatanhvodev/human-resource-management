@@ -221,7 +221,15 @@
       "salary": "Lương",
       "skill": "Kỹ năng",
       "proficiency": "Trình độ",
-      "relationship": "Quan hệ"
+      "relationship": "Quan hệ",
+      "manager": "Quản lý",
+      "selectManager": "Chọn quản lý",
+      "deleteTitle": "Xóa nhân viên",
+      "deleteDescription": "Bạn có chắc muốn xóa {{name}}? Hành động này không thể hoàn tác.",
+      "deleteError": "Không thể xóa nhân viên. Kiểm tra quyền hoặc ràng buộc dữ liệu.",
+      "deleteSuccess": "Đã xóa nhân viên thành công.",
+      "managerAssigned": "Đã phân công quản lý thành công.",
+      "managerAssignError": "Không thể phân công quản lý."
     },
     "attendance": {
       "title": "Chấm công",
