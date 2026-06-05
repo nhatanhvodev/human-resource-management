@@ -292,7 +292,20 @@
       "systemRole": "System Role",
       "toggleUser": "Toggle enabled",
       "newUser": "New User",
-      "createUser": "Create User"
+      "createUser": "Create User",
+      "scopes": "Scopes",
+      "manageScopes": "Manage Scopes",
+      "departmentScopes": "Department Scopes",
+      "audit": "Audit Log",
+      "auditAction": "Action",
+      "auditTarget": "Target",
+      "auditDetail": "Detail",
+      "auditActor": "Actor",
+      "idpMappings": "IdP Mappings",
+      "idpGroup": "IdP Group",
+      "addMapping": "Add Mapping",
+      "deleteMapping": "Delete Mapping",
+      "deleteMappingConfirm": "Are you sure you want to delete this mapping?"
     },
     "announcements": {
       "title": "Announcements",

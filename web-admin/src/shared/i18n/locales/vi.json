@@ -520,7 +520,20 @@
       "systemRole": "Vai trò hệ thống",
       "toggleUser": "Bật/tắt người dùng",
       "newUser": "Người dùng mới",
-      "createUser": "Tạo người dùng"
+      "createUser": "Tạo người dùng",
+      "scopes": "Phạm vi",
+      "manageScopes": "Quản lý phạm vi",
+      "departmentScopes": "Phạm vi phòng ban",
+      "audit": "Nhật ký",
+      "auditAction": "Hành động",
+      "auditTarget": "Đối tượng",
+      "auditDetail": "Chi tiết",
+      "auditActor": "Người thực hiện",
+      "idpMappings": "Ánh xạ IdP",
+      "idpGroup": "Nhóm IdP",
+      "addMapping": "Thêm ánh xạ",
+      "deleteMapping": "Xóa ánh xạ",
+      "deleteMappingConfirm": "Bạn có chắc muốn xóa ánh xạ này?"
     }
   }
 }

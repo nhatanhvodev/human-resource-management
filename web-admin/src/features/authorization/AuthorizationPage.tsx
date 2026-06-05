@@ -1,5 +1,5 @@
 import { ReloadOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, Checkbox, Col, Descriptions, Divider, Empty, Form, Input, Modal, Popconfirm, Row, Select, Space, Spin, Switch, Table, Tabs, Tag, Typography, message } from "antd";
+import { Alert, Button, Checkbox, Col, Descriptions, Divider, Empty, Form, Input, Modal, Pagination, Popconfirm, Row, Select, Space, Spin, Switch, Table, Tabs, Tag, Typography, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -66,6 +66,18 @@ export default function AuthorizationPage() {
   const [newDisplayName, setNewDisplayName] = useState("");
   const [newUserRoleIds, setNewUserRoleIds] = useState<string[]>([]);
 
+  const [scopeUser, setScopeUser] = useState<string | undefined>();
+  const [scopeDeptIds, setScopeDeptIds] = useState<string[]>([]);
+  const [scopeModalOpen, setScopeModalOpen] = useState(false);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [auditData, setAuditData] = useState<any[]>([]);
+  const [auditPage, setAuditPage] = useState(0);
+  const [auditSize, setAuditSize] = useState(10);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [idpMappings, setIdpMappings] = useState<{ id: string; idpGroup: string; roleId: string; roleCode: string }[]>([]);
+  const [newIdpGroup, setNewIdpGroup] = useState("");
+  const [newIdpRoleId, setNewIdpRoleId] = useState<string | undefined>();
+
   const selectedRole = roles.find((role) => role.id === selectedRoleId);
   const selectedUser = users.find((user) => user.id === selectedUserId);
 
@@ -86,16 +98,18 @@ export default function AuthorizationPage() {
     setLoading(true);
     setError(null);
     try {
-      const [meResponse, permissionResponse, roleResponse, userResponse] = await Promise.all([
+      const [meResponse, permissionResponse, roleResponse, userResponse, deptResponse] = await Promise.all([
         apiClient.get<AccessSnapshot>("/authz/me"),
         apiClient.get<Permission[]>("/authz/permissions"),
         apiClient.get<Role[]>("/authz/roles"),
-        apiClient.get<User[]>("/authz/users")
+        apiClient.get<User[]>("/authz/users"),
+        apiClient.get<{ id: string; name: string }[]>("/departments")
       ]);
       setAccess(meResponse.data);
       setPermissions(permissionResponse.data);
       setRoles(roleResponse.data);
       setUsers(userResponse.data);
+      setDepartments(deptResponse.data);
       const nextRole = roleResponse.data[0];
       const nextUser = userResponse.data[0];
       setSelectedRoleId(nextRole?.id);
@@ -233,6 +247,76 @@ export default function AuthorizationPage() {
     }
   };
 
+  const openScopeModal = async () => {
+    if (!scopeUser) return;
+    try {
+      const res = await apiClient.get<string[]>(`/authz/users/${scopeUser}/scopes`);
+      setScopeDeptIds(res.data);
+    } catch {
+      setScopeDeptIds([]);
+    }
+    setScopeModalOpen(true);
+  };
+
+  const saveScopes = async () => {
+    if (!scopeUser) return;
+    setSaving(true);
+    try {
+      await apiClient.put(`/authz/users/${scopeUser}/scopes`, { departmentIds: scopeDeptIds });
+      message.success(t("pages.authorization.saved"));
+      setScopeModalOpen(false);
+    } catch {
+      message.error(t("pages.authorization.saveError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const loadAudit = async (page: number, size: number) => {
+    try {
+      const res = await apiClient.get<any>(`/authz/audit?page=${page}&size=${size}`);
+      const body = res.data;
+      if (body.content) {
+        setAuditData(body.content);
+        setAuditTotal(body.totalElements ?? 0);
+      } else {
+        setAuditData(Array.isArray(body) ? body : []);
+        setAuditTotal(Array.isArray(body) ? body.length : 0);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadAudit(auditPage, auditSize);
+  }, [auditPage, auditSize]);
+
+  const loadIdpMappings = async () => {
+    try {
+      const res = await apiClient.get<any[]>("/authz/idp-mappings");
+      setIdpMappings(res.data);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadIdpMappings();
+  }, []);
+
+  const createIdpMapping = async () => {
+    if (!newIdpGroup.trim() || !newIdpRoleId) return;
+    try {
+      await apiClient.post("/authz/idp-mappings", { idpGroup: newIdpGroup.trim(), roleId: newIdpRoleId });
+      setNewIdpGroup("");
+      setNewIdpRoleId(undefined);
+      await loadIdpMappings();
+    } catch { message.error(t("pages.authorization.saveError")); }
+  };
+
+  const deleteIdpMapping = async (id: string) => {
+    try {
+      await apiClient.delete(`/authz/idp-mappings/${id}`);
+      await loadIdpMappings();
+    } catch { message.error(t("pages.authorization.saveError")); }
+  };
   const roleTable = (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={10}>
@@ -402,7 +486,131 @@ export default function AuthorizationPage() {
               )
             },
             { key: "roles", label: t("pages.authorization.roles"), children: roleTable },
-            { key: "users", label: t("pages.authorization.users"), children: userTable }
+            { key: "users", label: t("pages.authorization.users"), children: userTable },
+            {
+              key: "scopes",
+              label: t("pages.authorization.scopes"),
+              children: (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Row gutter={12} align="middle">
+                    <Col>
+                      <Select
+                        style={{ width: 240 }}
+                        placeholder={t("pages.authorization.username")}
+                        value={scopeUser}
+                        onChange={(value) => setScopeUser(value)}
+                        options={users.map((u) => ({ label: u.username, value: u.id }))}
+                      />
+                    </Col>
+                    <Col>
+                      <Button type="primary" disabled={!scopeUser} onClick={openScopeModal}>
+                        {t("pages.authorization.manageScopes")}
+                      </Button>
+                    </Col>
+                  </Row>
+                  <Modal
+                    title={t("pages.authorization.departmentScopes")}
+                    open={scopeModalOpen}
+                    onOk={saveScopes}
+                    onCancel={() => setScopeModalOpen(false)}
+                    confirmLoading={saving}
+                    destroyOnClose
+                  >
+                    <Checkbox.Group
+                      style={{ display: "grid", gap: 8 }}
+                      value={scopeDeptIds}
+                      options={departments.map((d) => ({ label: d.name, value: d.id }))}
+                      onChange={(values) => setScopeDeptIds(values.map(String))}
+                    />
+                  </Modal>
+                </Space>
+              )
+            },
+            {
+              key: "audit",
+              label: t("pages.authorization.audit"),
+              children: (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Table<any>
+                    rowKey={(_, i) => String(i)}
+                    size="middle"
+                    pagination={false}
+                    dataSource={auditData}
+                    columns={[
+                      { title: t("common.date"), dataIndex: "createdAt", render: (v) => v ? new Date(v).toLocaleString() : "-" },
+                      { title: t("pages.authorization.auditActor"), dataIndex: "actor" },
+                      { title: t("pages.authorization.auditAction"), dataIndex: "action" },
+                      { title: t("pages.authorization.auditTarget"), dataIndex: "targetType", render: (v, r) => v ? `${v} / ${r.targetId ?? "-"}` : "-" },
+                      { title: t("pages.authorization.auditDetail"), dataIndex: "detail" }
+                    ]}
+                  />
+                  <Pagination
+                    current={auditPage + 1}
+                    pageSize={auditSize}
+                    total={auditTotal}
+                    showSizeChanger
+                    pageSizeOptions={["5", "10", "20", "50"]}
+                    onChange={(page, size) => { setAuditPage(page - 1); setAuditSize(size); }}
+                    showTotal={(total) => `${t("common.name")}: ${total}`}
+                  />
+                </Space>
+              )
+            },
+            {
+              key: "idpMappings",
+              label: t("pages.authorization.idpMappings"),
+              children: (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Row gutter={12} align="middle">
+                    <Col>
+                      <Input
+                        style={{ width: 200 }}
+                        placeholder={t("pages.authorization.idpGroup")}
+                        value={newIdpGroup}
+                        onChange={(e) => setNewIdpGroup(e.target.value)}
+                      />
+                    </Col>
+                    <Col>
+                      <Select
+                        style={{ width: 200 }}
+                        placeholder={t("pages.authorization.roles")}
+                        value={newIdpRoleId}
+                        onChange={(value) => setNewIdpRoleId(value)}
+                        options={roles.map((r) => ({ label: `${r.code} - ${r.name}`, value: r.id }))}
+                      />
+                    </Col>
+                    <Col>
+                      <Button type="primary" onClick={createIdpMapping}>
+                        {t("pages.authorization.addMapping")}
+                      </Button>
+                    </Col>
+                  </Row>
+                  <Table<{ id: string; idpGroup: string; roleId: string; roleCode: string }>
+                    rowKey="id"
+                    size="middle"
+                    pagination={false}
+                    dataSource={idpMappings}
+                    columns={[
+                      { title: t("pages.authorization.idpGroup"), dataIndex: "idpGroup" },
+                      { title: t("pages.authorization.role"), dataIndex: "roleCode" },
+                      {
+                        title: t("common.actions"),
+                        render: (_, record) => (
+                          <Popconfirm
+                            title={t("pages.authorization.deleteMappingConfirm")}
+                            onConfirm={() => deleteIdpMapping(record.id)}
+                            okText={t("common.delete")}
+                            cancelText={t("common.cancel")}
+                          >
+                            <Button danger size="small">{t("pages.authorization.deleteMapping")}</Button>
+                          </Popconfirm>
+                        )
+                      }
+                    ]}
+                  />
+                </Space>
+              )
+            }
           ]}
         />
       </Spin>
