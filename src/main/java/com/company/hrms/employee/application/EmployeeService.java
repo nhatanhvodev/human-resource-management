@@ -118,6 +118,20 @@ public class EmployeeService {
     }
 
     @Transactional
+    public Employee assignManager(UUID employeeId, UUID managerId) {
+        String tenantId = TenantContext.get();
+        Employee employee = employeeRepository.findByIdAndTenantId(employeeId, tenantId)
+            .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));
+        Employee manager = null;
+        if (managerId != null) {
+            manager = employeeRepository.findByIdAndTenantId(managerId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("MANAGER_NOT_FOUND"));
+        }
+        employee.assignManager(manager);
+        return employee;
+    }
+
+    @Transactional
     public void delete(UUID id) {
         Employee employee = employeeRepository.findByIdAndTenantId(id, TenantContext.get())
             .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));

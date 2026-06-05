@@ -2,10 +2,17 @@ package com.company.hrms.attendance.application;
 
 import com.company.hrms.attendance.domain.*;
 import com.company.hrms.attendance.infrastructure.*;
+import com.company.hrms.employee.domain.Employee;
+import com.company.hrms.employee.infrastructure.EmployeeRepository;
 import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +27,21 @@ public class AttendanceService {
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final HolidayRepository holidayRepository;
     private final OvertimeRecordRepository overtimeRecordRepository;
+    private final EmployeeRepository employeeRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public AttendanceService(LeaveRequestRepository leaveRequestRepository,
                              LeaveBalanceRepository leaveBalanceRepository,
                              HolidayRepository holidayRepository,
-                             OvertimeRecordRepository overtimeRecordRepository) {
+                             OvertimeRecordRepository overtimeRecordRepository,
+                             EmployeeRepository employeeRepository,
+                             JdbcTemplate jdbcTemplate) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
         this.holidayRepository = holidayRepository;
         this.overtimeRecordRepository = overtimeRecordRepository;
+        this.employeeRepository = employeeRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional
@@ -44,7 +57,12 @@ public class AttendanceService {
     @Transactional
     public LeaveRequest approve(UUID leaveId) {
         LeaveRequest leaveRequest = findLeaveByIdScoped(leaveId);
+        UUID currentEmployeeId = getCurrentEmployeeId();
+        if (currentEmployeeId != null) {
+            assertCanManage(TenantContext.get(), currentEmployeeId, leaveRequest.getEmployeeId());
+        }
         leaveRequest.approve();
+        leaveRequest.setApprovedBy(currentEmployeeId);
         return leaveRequest;
     }
 
@@ -94,6 +112,28 @@ public class AttendanceService {
             .orElseThrow(() -> new NotFoundException("OVERTIME_NOT_FOUND"));
         record.reject();
         return record;
+    }
+
+    private void assertCanManage(String tenantId, UUID managerId, UUID employeeId) {
+        Employee target = employeeRepository.findByIdAndTenantId(employeeId, tenantId).orElse(null);
+        if (target == null) return;
+        boolean isDirectManager = target.getManagerId() != null && target.getManagerId().equals(managerId);
+        if (isDirectManager) return;
+        List<UUID> scopedDeptIds = jdbcTemplate.queryForList(
+            "select department_id from security_role_scope where user_id = ?",
+            UUID.class, managerId
+        );
+        if (target.getDepartment() != null && scopedDeptIds.contains(target.getDepartment().getId())) return;
+        throw new AccessDeniedException("NOT_YOUR_SUBORDINATE");
+    }
+
+    private UUID getCurrentEmployeeId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            String empId = jwtAuth.getToken().getClaimAsString("employee_id");
+            if (empId != null) return UUID.fromString(empId);
+        }
+        return null;
     }
 
     private LeaveRequest findLeaveByIdScoped(UUID leaveId) {

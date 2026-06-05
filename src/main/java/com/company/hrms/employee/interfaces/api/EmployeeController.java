@@ -84,6 +84,12 @@ public class EmployeeController {
         return toResponse(employeeService.changeStatus(id, request.employmentStatus()));
     }
 
+    @PutMapping("/{id}/manager")
+    @PreAuthorize("hasAuthority('employee:update')")
+    public EmployeeResponse assignManager(@PathVariable UUID id, @RequestBody AssignManagerRequest request) {
+        return toResponse(employeeService.assignManager(id, request.managerId()));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('employee:delete')")
     public void delete(@PathVariable UUID id) {
@@ -115,6 +121,8 @@ public class EmployeeController {
                                          String bankAccount, String taxCode) {}
 
     public record UpdateStatusRequest(@NotNull EmploymentStatus employmentStatus) {}
+
+    public record AssignManagerRequest(UUID managerId) {}
 
     public record EmployeeResponse(UUID id, String employeeNo, String fullName,
                                     UUID departmentId, String employmentStatus, LocalDate hireDate,

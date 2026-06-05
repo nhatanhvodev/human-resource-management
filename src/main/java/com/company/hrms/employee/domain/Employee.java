@@ -38,6 +38,10 @@ public class Employee extends AuditableEntity {
     @JoinColumn(name = "position_id")
     private Position position;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
+
     @Column(name = "hire_date", nullable = false)
     private LocalDate hireDate;
 
@@ -90,6 +94,8 @@ public class Employee extends AuditableEntity {
     public String getFullName() { return fullName; }
     public Department getDepartment() { return department; }
     public Position getPosition() { return position; }
+    public Employee getManager() { return manager; }
+    public UUID getManagerId() { return manager != null ? manager.getId() : null; }
     public LocalDate getHireDate() { return hireDate; }
     public EmploymentStatus getEmploymentStatus() { return employmentStatus; }
     public String getEmail() { return email; }
@@ -123,5 +129,9 @@ public class Employee extends AuditableEntity {
 
     public void changeStatus(EmploymentStatus status) {
         this.employmentStatus = status;
+    }
+
+    public void assignManager(Employee manager) {
+        this.manager = manager;
     }
 }
