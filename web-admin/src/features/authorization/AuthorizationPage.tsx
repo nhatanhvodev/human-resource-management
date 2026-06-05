@@ -109,7 +109,7 @@ export default function AuthorizationPage() {
       setPermissions(permissionResponse.data);
       setRoles(roleResponse.data);
       setUsers(userResponse.data);
-      setDepartments(deptResponse.data);
+      setDepartments(deptResponse.data.items || []);
       const nextRole = roleResponse.data[0];
       const nextUser = userResponse.data[0];
       setSelectedRoleId(nextRole?.id);
