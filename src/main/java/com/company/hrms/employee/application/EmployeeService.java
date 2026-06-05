@@ -117,6 +117,13 @@ public class EmployeeService {
         return employee;
     }
 
+    @Transactional
+    public void delete(UUID id) {
+        Employee employee = employeeRepository.findByIdAndTenantId(id, TenantContext.get())
+            .orElseThrow(() -> new IllegalArgumentException("EMPLOYEE_NOT_FOUND"));
+        employeeRepository.delete(employee);
+    }
+
     private static EmploymentStatus parseStatus(String status) {
         try {
             return EmploymentStatus.valueOf(status.toUpperCase(Locale.ROOT));

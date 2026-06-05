@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,6 +82,12 @@ public class EmployeeController {
     @PreAuthorize("hasAuthority('employee:update')")
     public EmployeeResponse patchStatus(@PathVariable UUID id, @Valid @RequestBody UpdateStatusRequest request) {
         return toResponse(employeeService.changeStatus(id, request.employmentStatus()));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('employee:delete')")
+    public void delete(@PathVariable UUID id) {
+        employeeService.delete(id);
     }
 
     private static EmployeeResponse toResponse(Employee e) {
