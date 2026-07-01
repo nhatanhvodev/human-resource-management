@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(grep -E \"\\(\\\\.class|\\\\.jar|\\\\.war\\)$\")"
-    ]
-  }
-}
