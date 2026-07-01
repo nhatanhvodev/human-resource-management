@@ -39,7 +39,7 @@ export function NotificationBell() {
         return;
       }
       const [dataRes, countRes] = await Promise.all([
-        apiClient.get<Notification[]>('/notifications/mine?unreadOnly=false', {
+        apiClient.get<Notification[] | { items: Notification[] }>('/notifications/mine?unreadOnly=false', {
           headers: { 'X-Employee-Id': empId }
         }),
         apiClient.get<{ unreadCount: number }>('/notifications/mine/count', {
