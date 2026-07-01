@@ -40,3 +40,4 @@ npm --prefix web-admin run test -- --run
 npm --prefix web-admin run build
 npm --prefix web-admin run test:e2e
 ```
+github repo: https://github.com/nhatanhvodev/human-resource-management.git

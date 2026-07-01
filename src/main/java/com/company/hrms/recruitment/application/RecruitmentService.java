@@ -86,9 +86,10 @@ public class RecruitmentService {
     public JobPosting createJobPosting(String title, String description, UUID departmentId,
                                         BigDecimal salaryRangeMin, BigDecimal salaryRangeMax,
                                         String requirements, String location, Integer headcount) {
+        int hc = headcount != null ? headcount : 1;
         return jobPostingRepository.save(new JobPosting(UUID.randomUUID(), TenantContext.get(), title,
             description, departmentId, JobPostingStatus.DRAFT,
-            salaryRangeMin, salaryRangeMax, requirements, location, headcount));
+            salaryRangeMin, salaryRangeMax, requirements, location, hc));
     }
 
     @Transactional
@@ -106,7 +107,7 @@ public class RecruitmentService {
         jobPosting.updateSalaryRangeMax(salaryRangeMax);
         jobPosting.updateRequirements(requirements);
         jobPosting.updateLocation(location);
-        jobPosting.updateHeadcount(headcount);
+        jobPosting.updateHeadcount(headcount != null ? headcount : 1);
         return jobPosting;
     }
 

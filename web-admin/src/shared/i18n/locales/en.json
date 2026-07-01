@@ -133,13 +133,12 @@
     "login": {
       "eyebrow": "HRMS",
       "title": "Sign in",
-      "subtitle": "Choose a demo account or enter a username and password to test the correct role.",
+      "subtitle": "A comprehensive human resource management platform for your enterprise.",
       "tenant": "Tenant ID",
       "username": "Username",
       "password": "Password",
       "submit": "Sign in",
-      "error": "Invalid username or password.",
-      "demoAccounts": "Demo accounts"
+      "error": "Invalid username or password."
     }
   },
   "table": {
@@ -315,7 +314,10 @@
       "category": "Category",
       "uploadedAt": "Uploaded at",
       "count": "{{count}} document",
-      "count_plural": "{{count}} documents"
+      "count_plural": "{{count}} documents",
+      "noFileSelected": "Please select a file to upload.",
+      "uploadError": "Unable to upload document.",
+      "file": "File"
     },
     "settings": {
       "title": "Dev settings",

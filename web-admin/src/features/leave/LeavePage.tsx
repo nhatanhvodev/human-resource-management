@@ -183,10 +183,7 @@ export default function LeavePage() {
       {
         title: t("common.employee"),
         dataIndex: "employeeName",
-        render: (value: string | undefined, row) => {
-          const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
-          return value ?? employee?.fullName ?? "-";
-        }
+        render: (value: string | undefined) => value ?? "-"
       },
       {
         title: t("pages.leave.requestType"),
@@ -240,7 +237,7 @@ export default function LeavePage() {
         }
       }
     ],
-    [employeeById, saving, t]
+    [saving, t]
   );
 
   const balanceColumns = useMemo<ColumnsType<LeaveBalance>>(
@@ -248,10 +245,7 @@ export default function LeavePage() {
       {
         title: t("common.employee"),
         dataIndex: "employeeName",
-        render: (value: string | undefined, row) => {
-          const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
-          return value ?? employee?.fullName ?? "-";
-        }
+        render: (value: string | undefined) => value ?? "-"
       },
       {
         title: t("pages.leave.balanceType"),
@@ -279,7 +273,7 @@ export default function LeavePage() {
         width: 110
       }
     ],
-    [employeeById, t]
+    [t]
   );
 
   const holidayColumns = useMemo<ColumnsType<Holiday>>(

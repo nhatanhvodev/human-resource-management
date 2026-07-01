@@ -32,6 +32,8 @@ export const API = {
     START: "/onboarding/start",
   },
   DOCUMENTS: "/documents",
+  DOCUMENTS_UPLOAD: "/documents/upload",
+  DOCUMENTS_MINE: "/documents/mine",
   ASSETS: "/assets",
   ANNOUNCEMENTS: "/announcements",
   AUDIT_LOGS: "/audit-logs",

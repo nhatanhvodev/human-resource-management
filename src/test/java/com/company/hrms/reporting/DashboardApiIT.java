@@ -1,8 +1,7 @@
 package com.company.hrms.reporting;
 
-import com.company.hrms.integration.domain.OutboxEvent;
-import com.company.hrms.integration.domain.OutboxStatus;
-import com.company.hrms.integration.infrastructure.OutboxEventRepository;
+import com.company.hrms.audit.domain.AuditLog;
+import com.company.hrms.audit.infrastructure.AuditLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +32,7 @@ class DashboardApiIT {
     private WebApplicationContext context;
 
     @Autowired
-    private OutboxEventRepository outboxEventRepository;
+    private AuditLogRepository auditLogRepository;
 
     private MockMvc mvc;
 
@@ -55,12 +54,12 @@ class DashboardApiIT {
     @Test
     void returnsDashboardActivitiesWithOrderingAndLimit() throws Exception {
         String tenantId = "tenant-dashboard-activities";
-        outboxEventRepository.save(new OutboxEvent(
-            UUID.randomUUID(), "tenant-dashboard-activities-other", "OTHER_EVENT", "payload-other", OutboxStatus.PENDING));
+        auditLogRepository.save(new AuditLog(
+            UUID.randomUUID(), "tenant-dashboard-activities-other", null, "OTHER_EVENT", null, null, "payload-other", null));
 
         for (int i = 0; i < 22; i++) {
-            outboxEventRepository.save(new OutboxEvent(
-                UUID.randomUUID(), tenantId, "TEST_EVENT_" + i, "payload-" + i, OutboxStatus.PENDING));
+            auditLogRepository.save(new AuditLog(
+                UUID.randomUUID(), tenantId, null, "TEST_EVENT_" + i, null, null, "payload-" + i, null));
             Thread.sleep(2);
         }
 

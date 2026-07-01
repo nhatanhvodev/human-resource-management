@@ -133,13 +133,12 @@
     "login": {
       "eyebrow": "HRMS",
       "title": "Đăng nhập",
-      "subtitle": "Chọn tài khoản demo hoặc nhập username/password để test đúng role.",
+      "subtitle": "Hệ thống quản trị nhân sự toàn diện cho doanh nghiệp.",
       "tenant": "Mã đơn vị",
       "username": "Tên đăng nhập",
       "password": "Mật khẩu",
       "submit": "Đăng nhập",
-      "error": "Sai tên đăng nhập hoặc mật khẩu.",
-      "demoAccounts": "Tài khoản demo"
+      "error": "Sai tên đăng nhập hoặc mật khẩu."
     }
   },
   "table": {
@@ -315,7 +314,10 @@
       "category": "Danh mục",
       "uploadedAt": "Ngày tải",
       "count": "{{count}} tài liệu",
-      "count_plural": "{{count}} tài liệu"
+      "count_plural": "{{count}} tài liệu",
+      "noFileSelected": "Vui lòng chọn file để tải lên.",
+      "uploadError": "Không tải lên được tài liệu.",
+      "file": "File"
     },
     "settings": {
       "title": "Thiết lập dev",

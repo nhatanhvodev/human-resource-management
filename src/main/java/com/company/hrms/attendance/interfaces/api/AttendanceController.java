@@ -2,7 +2,10 @@ package com.company.hrms.attendance.interfaces.api;
 
 import com.company.hrms.attendance.application.AttendanceService;
 import com.company.hrms.attendance.domain.*;
+import com.company.hrms.employee.domain.Employee;
+import com.company.hrms.employee.infrastructure.EmployeeRepository;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import com.company.hrms.shared.tenant.TenantContext;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,16 +22,24 @@ import java.util.UUID;
 @Validated
 public class AttendanceController {
     private final AttendanceService attendanceService;
+    private final EmployeeRepository employeeRepository;
 
-    public AttendanceController(AttendanceService attendanceService) {
+    public AttendanceController(AttendanceService attendanceService, EmployeeRepository employeeRepository) {
         this.attendanceService = attendanceService;
+        this.employeeRepository = employeeRepository;
     }
 
     @GetMapping("/leave-requests")
     @PreAuthorize("hasAuthority('leave:read')")
     public PageResponse<LeaveResponse> list(@RequestParam(required = false) String status, Pageable pageable) {
+        String tenantId = TenantContext.get();
         return PageResponse.from(
-            attendanceService.list(status, pageable).map(AttendanceController::toResponse));
+            attendanceService.list(status, pageable).map(lr -> {
+                String employeeName = employeeRepository.findByIdAndTenantId(lr.getEmployeeId(), tenantId)
+                    .map(Employee::getFullName)
+                    .orElse(null);
+                return toResponse(lr, employeeName);
+            }));
     }
 
     @PostMapping("/leave-requests")
@@ -38,19 +49,30 @@ public class AttendanceController {
             request.employeeId(), request.fromDate(), request.toDate(),
             request.leaveType() != null ? request.leaveType() : LeaveType.ANNUAL,
             request.reason());
-        return toResponse(lr);
+        String employeeName = employeeRepository.findByIdAndTenantId(lr.getEmployeeId(), TenantContext.get())
+            .map(Employee::getFullName)
+            .orElse(null);
+        return toResponse(lr, employeeName);
     }
 
     @PostMapping("/leave-requests/{id}/approve")
     @PreAuthorize("hasAuthority('leave:approve')")
     public LeaveResponse approve(@PathVariable UUID id) {
-        return toResponse(attendanceService.approve(id));
+        LeaveRequest lr = attendanceService.approve(id);
+        String employeeName = employeeRepository.findByIdAndTenantId(lr.getEmployeeId(), TenantContext.get())
+            .map(Employee::getFullName)
+            .orElse(null);
+        return toResponse(lr, employeeName);
     }
 
     @PostMapping("/leave-requests/{id}/reject")
     @PreAuthorize("hasAuthority('leave:approve')")
     public LeaveResponse reject(@PathVariable UUID id) {
-        return toResponse(attendanceService.reject(id));
+        LeaveRequest lr = attendanceService.reject(id);
+        String employeeName = employeeRepository.findByIdAndTenantId(lr.getEmployeeId(), TenantContext.get())
+            .map(Employee::getFullName)
+            .orElse(null);
+        return toResponse(lr, employeeName);
     }
 
     @GetMapping("/leave-balances")
@@ -92,16 +114,17 @@ public class AttendanceController {
         return new OvertimeResponse(r.getId(), r.getEmployeeId(), r.getDate(), r.getHours(), r.getStatus().name());
     }
 
-    private static LeaveResponse toResponse(LeaveRequest lr) {
-        return new LeaveResponse(lr.getId(), lr.getEmployeeId(), lr.getFromDate(), lr.getToDate(),
+    private static LeaveResponse toResponse(LeaveRequest lr, String employeeName) {
+        return new LeaveResponse(lr.getId(), lr.getEmployeeId(), employeeName,
+            lr.getFromDate(), lr.getToDate(),
             lr.getLeaveType().name(), lr.getReason(), lr.getStatus().name(), lr.getApprovedBy());
     }
 
     public record CreateLeaveRequest(@NotNull UUID employeeId, @NotNull LocalDate fromDate,
                                      @NotNull LocalDate toDate, LeaveType leaveType, String reason) {}
 
-    public record LeaveResponse(UUID id, UUID employeeId, LocalDate fromDate, LocalDate toDate,
-                                String leaveType, String reason, String status, UUID approvedBy) {}
+    public record LeaveResponse(UUID id, UUID employeeId, String employeeName, LocalDate fromDate,
+                                LocalDate toDate, String leaveType, String reason, String status, UUID approvedBy) {}
 
     public record LeaveBalanceResponse(UUID id, UUID employeeId, String leaveType, int year,
                                        int totalDays, int usedDays, int pendingDays) {}

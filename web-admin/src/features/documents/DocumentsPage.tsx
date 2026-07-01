@@ -1,5 +1,5 @@
-import { DeleteOutlined } from "@ant-design/icons";
-import { Alert, Button, Space } from "antd";
+import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Modal, Select, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +30,10 @@ export default function DocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [form] = Form.useForm();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,6 +79,34 @@ export default function DocumentsPage() {
     }
   };
 
+  const handleUpload = async (values: { employeeId: string; category: string }) => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fileInput = document.querySelector<HTMLInputElement>("#admin-doc-file");
+      const file = fileInput?.files?.[0];
+      if (!file) {
+        setUploadError(t("pages.documents.noFileSelected"));
+        setUploading(false);
+        return;
+      }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("employeeId", values.employeeId);
+      formData.append("category", values.category);
+      await apiClient.post(API.DOCUMENTS_UPLOAD, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      form.resetFields();
+      setUploadOpen(false);
+      await load();
+    } catch {
+      setUploadError(t("pages.documents.uploadError"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -117,11 +149,44 @@ export default function DocumentsPage() {
         <p>{t("pages.documents.subtitle")}</p>
       </div>
       <PageToolbar>
-        <Space />
+        <Button type="primary" icon={<UploadOutlined />} onClick={() => setUploadOpen(true)}>
+          {t("ess.upload")}
+        </Button>
         <span>{t("pages.documents.count", { count: items.length })}</span>
       </PageToolbar>
       {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
       <AppTable<DocumentItem> rowKey="id" loading={loading} columns={columns} dataSource={items} pagination={false} />
+
+      <Modal title={t("ess.upload")} open={uploadOpen} onCancel={() => { setUploadOpen(false); setUploadError(null); form.resetFields(); }}
+        footer={null} destroyOnClose>
+        <Form form={form} layout="vertical" onFinish={handleUpload} initialValues={{ category: "OTHER" }}>
+          {uploadError && <Alert type="error" showIcon message={uploadError} style={{ marginBottom: 16 }} />}
+          <Form.Item label={t("common.employee")} name="employeeId" rules={[{ required: true, message: t("pages.leave.selectEmployee") }]}>
+            <Select
+              placeholder={t("pages.leave.selectEmployee")}
+              options={employees.map((e) => ({ value: e.id, label: `${e.employeeNo} - ${e.fullName}` }))}
+              showSearch
+              filterOption={(input, option) => (option?.label as string ?? "").toLowerCase().includes(input.toLowerCase())}
+            />
+          </Form.Item>
+          <Form.Item label={t("pages.documents.file")} required>
+            <input id="admin-doc-file" type="file" />
+          </Form.Item>
+          <Form.Item label={t("pages.documents.category")} name="category" rules={[{ required: true }]}>
+            <Select
+              options={[
+                { value: "CONTRACT", label: t("docCategory.CONTRACT", "Contract") },
+                { value: "CV", label: t("docCategory.CV", "CV") },
+                { value: "CERTIFICATE", label: t("docCategory.CERTIFICATE", "Certificate") },
+                { value: "OTHER", label: t("docCategory.OTHER", "Other") }
+              ]}
+            />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={uploading} block>
+            {t("ess.upload")}
+          </Button>
+        </Form>
+      </Modal>
     </>
   );
 }

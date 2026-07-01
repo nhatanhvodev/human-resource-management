@@ -182,7 +182,7 @@ INSERT INTO performance_review (id, tenant_id, cycle_id, employee_id, reviewer_t
 SELECT gen_random_uuid(), 'default', (SELECT id FROM appraisal_cycle WHERE name = 'Đánh giá Nửa đầu năm 2026' LIMIT 1), e.id, 'MANAGER', e.manager_id, ROUND((RANDOM() * 3 + 2)::numeric, 1), 
   (ARRAY['Kỹ năng chuyên môn tốt, hoàn thành deadline đúng hạn', 'Tinh thần làm việc nhóm cao, hỗ trợ đồng nghiệp hiệu quả', 'Khả năng tự học và thích nghi nhanh', 'Kỹ năng giao tiếp và thuyết trình xuất sắc', 'Tư duy phân tích và giải quyết vấn đề tốt'])[FLOOR(RANDOM() * 5 + 1)],
   (ARRAY['Cần cải thiện kỹ năng quản lý thời gian', 'Nên tham gia thêm các khóa đào tạo chuyên môn', 'Cần chủ động hơn trong báo cáo tiến độ', 'Nên phát triển kỹ năng tiếng Anh', 'Cần cải thiện kỹ năng viết tài liệu'])[FLOOR(RANDOM() * 5 + 1)],
-  'SUBMITTED', NOW() - (FLOOR(RANDOM() * 30 + 1)::int || ' days')::INTERVAL, NOW(), NOW()
+  'SUBMITTED', DATEADD('DAY', -FLOOR(RANDOM() * 30 + 1)::int, NOW()), NOW(), NOW()
 FROM employee e WHERE e.id NOT IN (SELECT DISTINCT employee_id FROM performance_review) AND e.employment_status = 'ACTIVE' LIMIT 15;
 
 INSERT INTO kpi (id, tenant_id, employee_id, cycle_id, title, description, target_score, actual_score, weight, created_at, updated_at)

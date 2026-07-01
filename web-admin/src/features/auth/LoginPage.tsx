@@ -71,7 +71,6 @@ export default function LoginPage() {
         <div className="login-page__intro">
           <Text className="login-page__eyebrow">{t("auth.login.eyebrow")}</Text>
           <h1>{t("auth.login.title")}</h1>
-          <p>{t("auth.login.subtitle")}</p>
         </div>
 
         <Form
