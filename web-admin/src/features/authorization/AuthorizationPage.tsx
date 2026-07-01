@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
+import type { PageResponse } from "../../shared/api/types";
 
 const { Text } = Typography;
 
@@ -80,6 +82,7 @@ export default function AuthorizationPage() {
 
   const selectedRole = roles.find((role) => role.id === selectedRoleId);
   const selectedUser = users.find((user) => user.id === selectedUserId);
+  const roleNameById = useMemo(() => new Map(roles.map((role) => [role.id, `${role.code} - ${role.name}`])), [roles]);
 
   const permissionOptions = useMemo(
     () => permissions.map((permission) => ({
@@ -99,11 +102,11 @@ export default function AuthorizationPage() {
     setError(null);
     try {
       const [meResponse, permissionResponse, roleResponse, userResponse, deptResponse] = await Promise.all([
-        apiClient.get<AccessSnapshot>("/authz/me"),
-        apiClient.get<Permission[]>("/authz/permissions"),
-        apiClient.get<Role[]>("/authz/roles"),
-        apiClient.get<User[]>("/authz/users"),
-        apiClient.get<{ id: string; name: string }[]>("/departments")
+        apiClient.get<AccessSnapshot>(API.AUTH.ME),
+        apiClient.get<Permission[]>(API.AUTHZ.PERMISSIONS),
+        apiClient.get<Role[]>(API.AUTHZ.ROLES),
+        apiClient.get<User[]>(API.AUTHZ.USERS),
+        apiClient.get<PageResponse<{ id: string; name: string }>>(API.DEPARTMENTS)
       ]);
       setAccess(meResponse.data);
       setPermissions(permissionResponse.data);
@@ -143,7 +146,7 @@ export default function AuthorizationPage() {
     }
     setSaving(true);
     try {
-      await apiClient.put(`/authz/roles/${selectedRole.id}/permissions`, { permissionCodes: rolePermissionDraft });
+      await apiClient.put(`${API.AUTHZ.ROLES}/${selectedRole.id}/permissions`, { permissionCodes: rolePermissionDraft });
       message.success(t("pages.authorization.saved"));
       await loadData();
     } catch {
@@ -159,7 +162,7 @@ export default function AuthorizationPage() {
     }
     setSaving(true);
     try {
-      await apiClient.put(`/authz/users/${selectedUser.id}/roles`, { roleIds: userRoleDraft });
+      await apiClient.put(`${API.AUTHZ.USERS}/${selectedUser.id}/roles`, { roleIds: userRoleDraft });
       message.success(t("pages.authorization.saved"));
       await loadData();
     } catch {
@@ -176,7 +179,7 @@ export default function AuthorizationPage() {
     }
     setSaving(true);
     try {
-      await apiClient.post("/authz/roles", {
+      await apiClient.post(API.AUTHZ.ROLES, {
         code: newRoleCode.trim(),
         name: newRoleName.trim(),
         description: newRoleDesc.trim() || undefined,
@@ -202,7 +205,7 @@ export default function AuthorizationPage() {
     }
     setSaving(true);
     try {
-      await apiClient.delete(`/authz/roles/${selectedRole.id}`);
+      await apiClient.delete(`${API.AUTHZ.ROLES}/${selectedRole.id}`);
       message.success(t("pages.authorization.saved"));
       await loadData();
     } catch {
@@ -214,7 +217,7 @@ export default function AuthorizationPage() {
 
   const toggleUser = async (userId: string, enabled: boolean) => {
     try {
-      await apiClient.put(`/authz/users/${userId}/enabled`, { enabled });
+      await apiClient.put(`${API.AUTHZ.USERS}/${userId}/enabled`, { enabled });
       message.success(t("pages.authorization.saved"));
       await loadData();
     } catch {
@@ -229,7 +232,7 @@ export default function AuthorizationPage() {
     }
     setSaving(true);
     try {
-      await apiClient.post("/authz/users", {
+      await apiClient.post(API.AUTHZ.USERS, {
         username: newUsername.trim(),
         displayName: newDisplayName.trim(),
         roleIds: newUserRoleIds
@@ -250,7 +253,7 @@ export default function AuthorizationPage() {
   const openScopeModal = async () => {
     if (!scopeUser) return;
     try {
-      const res = await apiClient.get<string[]>(`/authz/users/${scopeUser}/scopes`);
+      const res = await apiClient.get<string[]>(`${API.AUTHZ.USERS}/${scopeUser}/scopes`);
       setScopeDeptIds(res.data);
     } catch {
       setScopeDeptIds([]);
@@ -262,7 +265,7 @@ export default function AuthorizationPage() {
     if (!scopeUser) return;
     setSaving(true);
     try {
-      await apiClient.put(`/authz/users/${scopeUser}/scopes`, { departmentIds: scopeDeptIds });
+      await apiClient.put(`${API.AUTHZ.USERS}/${scopeUser}/scopes`, { departmentIds: scopeDeptIds });
       message.success(t("pages.authorization.saved"));
       setScopeModalOpen(false);
     } catch {
@@ -274,7 +277,7 @@ export default function AuthorizationPage() {
 
   const loadAudit = async (page: number, size: number) => {
     try {
-      const res = await apiClient.get<any>(`/authz/audit?page=${page}&size=${size}`);
+      const res = await apiClient.get<any>(`${API.AUTHZ.AUDIT}?page=${page}&size=${size}`);
       const body = res.data;
       if (body.content) {
         setAuditData(body.content);
@@ -292,7 +295,7 @@ export default function AuthorizationPage() {
 
   const loadIdpMappings = async () => {
     try {
-      const res = await apiClient.get<any[]>("/authz/idp-mappings");
+      const res = await apiClient.get<any[]>(API.AUTHZ.IDP_MAPPINGS);
       setIdpMappings(res.data);
     } catch { /* ignore */ }
   };
@@ -304,7 +307,7 @@ export default function AuthorizationPage() {
   const createIdpMapping = async () => {
     if (!newIdpGroup.trim() || !newIdpRoleId) return;
     try {
-      await apiClient.post("/authz/idp-mappings", { idpGroup: newIdpGroup.trim(), roleId: newIdpRoleId });
+      await apiClient.post(API.AUTHZ.IDP_MAPPINGS, { idpGroup: newIdpGroup.trim(), roleId: newIdpRoleId });
       setNewIdpGroup("");
       setNewIdpRoleId(undefined);
       await loadIdpMappings();
@@ -313,7 +316,7 @@ export default function AuthorizationPage() {
 
   const deleteIdpMapping = async (id: string) => {
     try {
-      await apiClient.delete(`/authz/idp-mappings/${id}`);
+      await apiClient.delete(`${API.AUTHZ.IDP_MAPPINGS}/${id}`);
       await loadIdpMappings();
     } catch { message.error(t("pages.authorization.saveError")); }
   };
@@ -427,7 +430,7 @@ export default function AuthorizationPage() {
                   />
                 </Space>
               </Descriptions.Item>
-              <Descriptions.Item label={t("common.employee")}>{selectedUser.employeeId ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label={t("common.employee")}>{selectedUser.displayName ?? "-"}</Descriptions.Item>
             </Descriptions>
             <Checkbox.Group
               style={{ display: "grid", gap: 8 }}
@@ -470,7 +473,7 @@ export default function AuthorizationPage() {
                   <Descriptions bordered size="small" column={1}>
                     <Descriptions.Item label={t("pages.authorization.username")}>{access.username}</Descriptions.Item>
                     <Descriptions.Item label={t("common.name")}>{access.displayName}</Descriptions.Item>
-                    <Descriptions.Item label={t("common.employee")}>{access.employeeId ?? "-"}</Descriptions.Item>
+                    <Descriptions.Item label={t("common.employee")}>{access.displayName ?? "-"}</Descriptions.Item>
                   </Descriptions>
                   <div>
                     <Text strong>{t("pages.authorization.roles")}</Text>
@@ -514,7 +517,7 @@ export default function AuthorizationPage() {
                     onOk={saveScopes}
                     onCancel={() => setScopeModalOpen(false)}
                     confirmLoading={saving}
-                    destroyOnClose
+                    destroyOnHidden
                   >
                     <Checkbox.Group
                       style={{ display: "grid", gap: 8 }}
@@ -540,7 +543,7 @@ export default function AuthorizationPage() {
                       { title: t("common.date"), dataIndex: "createdAt", render: (v) => v ? new Date(v).toLocaleString() : "-" },
                       { title: t("pages.authorization.auditActor"), dataIndex: "actor" },
                       { title: t("pages.authorization.auditAction"), dataIndex: "action" },
-                      { title: t("pages.authorization.auditTarget"), dataIndex: "targetType", render: (v, r) => v ? `${v} / ${r.targetId ?? "-"}` : "-" },
+                      { title: t("pages.authorization.auditTarget"), dataIndex: "targetType", render: (v) => v ?? "-" },
                       { title: t("pages.authorization.auditDetail"), dataIndex: "detail" }
                     ]}
                   />
@@ -592,7 +595,7 @@ export default function AuthorizationPage() {
                     dataSource={idpMappings}
                     columns={[
                       { title: t("pages.authorization.idpGroup"), dataIndex: "idpGroup" },
-                      { title: t("pages.authorization.role"), dataIndex: "roleCode" },
+                      { title: t("pages.authorization.role"), render: (_, record) => record.roleCode ?? roleNameById.get(record.roleId) ?? "-" },
                       {
                         title: t("common.actions"),
                         render: (_, record) => (
@@ -620,7 +623,7 @@ export default function AuthorizationPage() {
         open={createRoleOpen}
         onCancel={() => { setCreateRoleOpen(false); setNewRoleCode(""); setNewRoleName(""); setNewRoleDesc(""); setNewRoleTemplate(undefined); }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form layout="vertical" onFinish={createRole}>
           <Form.Item label={t("pages.authorization.code")} required>
@@ -652,7 +655,7 @@ export default function AuthorizationPage() {
         open={createUserOpen}
         onCancel={() => { setCreateUserOpen(false); setNewUsername(""); setNewDisplayName(""); setNewUserRoleIds([]); }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form layout="vertical" onFinish={createUser}>
           <Form.Item label={t("pages.authorization.username")} required>

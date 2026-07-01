@@ -4,19 +4,33 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import org.springframework.core.io.ClassPathResource;
+
 import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
 @SpringBootTest
@@ -54,10 +68,10 @@ class SecurityAccessIT {
 
     @Test
     void databaseRolePermissionsOverrideTokenClaimedAuthorities() throws Exception {
-        String token = unsignedJwt(
+        String token = signedJwt(
             "b1000000-0000-4000-8000-000000000002",
             "b1000000-0000-4000-8000-000000000002",
-            "[\"employee:read\"]"
+            List.of("employee:read")
         );
 
         mvc.perform(get("/api/v1/employees")
@@ -73,11 +87,33 @@ class SecurityAccessIT {
     }
 
     @Test
+    void loginWithSeededAccountReturnsToken() throws Exception {
+        mvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"username":"line-manager","password":"manager123","tenantId":"default"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token").isNotEmpty())
+            .andExpect(jsonPath("$.username").value("line-manager"));
+    }
+
+    @Test
+    void loginRejectsInvalidPassword() throws Exception {
+        mvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"username":"line-manager","password":"wrong","tenantId":"default"}
+                    """))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void employeeDeleteRequiresDeletePermission() throws Exception {
-        String employeeToken = unsignedJwt(
+        String employeeToken = signedJwt(
             "b1000000-0000-4000-8000-000000000002",
             "b1000000-0000-4000-8000-000000000002",
-            "[\"employee:read\"]"
+            List.of("employee:read")
         );
 
         mvc.perform(delete("/api/v1/employees/b1000000-0000-4000-8000-000000000002")
@@ -86,11 +122,28 @@ class SecurityAccessIT {
     }
 
     @Test
+    void seededLineManagerCanReadEmployeesButCannotManageAuthorization() throws Exception {
+        String managerToken = signedJwt(
+            "b1000000-0000-4000-8000-000000000011",
+            "b1000000-0000-4000-8000-000000000011",
+            List.of("employee:read", "authz:read")
+        );
+
+        mvc.perform(get("/api/v1/employees")
+                .header("Authorization", "Bearer " + managerToken))
+            .andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/authz/roles")
+                .header("Authorization", "Bearer " + managerToken))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void lineManagerCannotApproveLeaveOutsideScope() throws Exception {
-        String managerToken = unsignedJwt(
+        String managerToken = signedJwt(
             "b1000000-0000-4000-8000-000000000020",
             "b1000000-0000-4000-8000-000000000020",
-            "[\"leave:approve\"]"
+            List.of("leave:approve")
         );
 
         mvc.perform(post("/api/v1/leave-requests/{id}/approve", "00000000-0000-0000-0000-000000000000")
@@ -98,17 +151,29 @@ class SecurityAccessIT {
             .andExpect(status().isNotFound());
     }
 
-    private static String unsignedJwt(String subject, String employeeId, String authoritiesJson) {
-        long now = Instant.now().getEpochSecond();
-        String claims = """
-            {"sub":"%s","employee_id":"%s","authorities":%s,"iat":%d,"exp":%d}
-            """.formatted(subject, employeeId, authoritiesJson, now, now + 3600).trim();
-        return base64Url("{\"alg\":\"none\"}") + "." + base64Url(claims) + ".signature";
-    }
+    private static String signedJwt(String subject, String employeeId, List<String> authorities) throws Exception {
+        ClassPathResource resource = new ClassPathResource("keys/dev-private.pem");
+        String pem = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        String keyContent = pem
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replaceAll("\\s", "");
+        byte[] encoded = Base64.getDecoder().decode(keyContent);
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(keySpec);
 
-    private static String base64Url(String value) {
-        return Base64.getUrlEncoder()
-            .withoutPadding()
-            .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+        Instant now = Instant.now();
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            .subject(subject)
+            .claim("employee_id", employeeId)
+            .claim("authorities", authorities)
+            .issueTime(Date.from(now))
+            .expirationTime(Date.from(now.plusSeconds(3600)))
+            .build();
+
+        SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claimsSet);
+        signedJWT.sign(new RSASSASigner(privateKey));
+        return signedJWT.serialize();
     }
 }

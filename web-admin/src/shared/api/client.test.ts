@@ -16,4 +16,14 @@ describe("buildHeaders", () => {
     expect(headers.Authorization).toBeUndefined();
     expect(headers["X-Tenant-Id"]).toBe("tenant-a");
   });
+
+  it("can build public login headers from the tenant submitted in the form", () => {
+    const headers = buildHeaders(
+      { token: "stale-token", tenantId: "stale-tenant" },
+      { includeAuthorization: false, tenantId: "default" }
+    );
+
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers["X-Tenant-Id"]).toBe("default");
+  });
 });

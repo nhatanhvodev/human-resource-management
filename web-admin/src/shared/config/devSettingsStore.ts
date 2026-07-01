@@ -5,7 +5,6 @@ export type DevSettings = {
 
 const TOKEN_KEY = "hrms.dev.token";
 const TENANT_KEY = "hrms.dev.tenant";
-const DEFAULT_LOCAL_TOKEN = "local-test-token";
 const DEFAULT_LOCAL_TENANT = "default";
 export const DEV_SETTINGS_CHANGED = "hrms.dev.settings.changed";
 
@@ -24,7 +23,7 @@ function defaultValue(value: string): string {
 
 export function loadDevSettings(): DevSettings {
   return {
-    token: readStorage(TOKEN_KEY, defaultValue(DEFAULT_LOCAL_TOKEN)),
+    token: readStorage(TOKEN_KEY),
     tenantId: readStorage(TENANT_KEY, defaultValue(DEFAULT_LOCAL_TENANT))
   };
 }
@@ -36,5 +35,14 @@ export function saveDevSettings(settings: DevSettings): void {
 
   window.localStorage.setItem(TOKEN_KEY, settings.token);
   window.localStorage.setItem(TENANT_KEY, settings.tenantId);
+  window.dispatchEvent(new Event(DEV_SETTINGS_CHANGED));
+}
+
+export function clearDevToken(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(TOKEN_KEY);
   window.dispatchEvent(new Event(DEV_SETTINGS_CHANGED));
 }

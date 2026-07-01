@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
+import type { PageResponse } from '../../shared/api/types';
 import { getEmployeeId } from '../../shared/auth/jwt';
 import { StatusTag } from '../../shared/ui/StatusTag';
 
@@ -23,10 +24,11 @@ export default function MyLeavePage() {
     (async () => {
       try {
         const empId = getEmployeeId();
-        const res = await apiClient.get<LeaveItem[]>('/leave/mine', {
+        const res = await apiClient.get<PageResponse<LeaveItem>>('/self/leave-requests', {
+          params: { page: 0, size: 20 },
           headers: { 'X-Employee-Id': empId }
         });
-        if (mounted) setData(Array.isArray(res.data) ? res.data : []);
+        if (mounted) setData(res.data.items ?? []);
       } finally { if (mounted) setLoading(false); }
     })();
     return () => { mounted = false; };

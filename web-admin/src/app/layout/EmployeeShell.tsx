@@ -1,10 +1,10 @@
 import {
   BookOutlined,
   CalendarOutlined,
-  ClockCircleOutlined,
   CompassOutlined,
   FileOutlined,
   HomeOutlined,
+  LogoutOutlined,
   MenuOutlined,
   UserOutlined,
   WalletOutlined
@@ -16,6 +16,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { LanguageSwitcher } from "../../shared/i18n/LanguageSwitcher";
 import { NotificationBell } from "../../shared/ui/NotificationBell";
+import { clearDevToken } from "../../shared/config/devSettingsStore";
 
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
@@ -25,7 +26,6 @@ const navItems = [
   { key: "/ess/profile", icon: <UserOutlined />, labelKey: "ess.profile" },
   { key: "/ess/payslips", icon: <WalletOutlined />, labelKey: "ess.payslips" },
   { key: "/ess/leave", icon: <CalendarOutlined />, labelKey: "nav.leave" },
-  { key: "/ess/attendance", icon: <ClockCircleOutlined />, labelKey: "nav.attendance" },
   { key: "/ess/documents", icon: <FileOutlined />, labelKey: "nav.documents" },
   { key: "/ess/onboarding", icon: <CompassOutlined />, labelKey: "nav.onboarding" },
   { key: "/ess/training", icon: <BookOutlined />, labelKey: "nav.training" }
@@ -37,11 +37,16 @@ export function EmployeeShell() {
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const selectedKey = navItems.find((item) => location.pathname.startsWith(item.key))?.key ?? "/ess/dashboard";
-  const menuItems = navItems.map((item) => ({ ...item, label: t(item.labelKey) }));
+  const menuItems = navItems.map((item) => ({ key: item.key, icon: item.icon, label: t(item.labelKey) }));
 
   const onNavigate = (key: string) => {
     navigate(key);
     setMobileNavOpen(false);
+  };
+
+  const onLogout = () => {
+    clearDevToken();
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -65,6 +70,7 @@ export function EmployeeShell() {
           <div className="app-shell__status" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <LanguageSwitcher />
             <NotificationBell />
+            <Button type="text" icon={<LogoutOutlined />} aria-label={t("auth.logout")} onClick={onLogout} />
           </div>
         </Header>
         <Content className="app-shell__content">

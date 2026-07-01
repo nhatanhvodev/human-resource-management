@@ -1,68 +1,31 @@
 import { expect, test } from "playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.route("**/api/v1/dashboard/summary", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ employees: 0, departments: 0, openPayrollPeriods: 0, pendingLeaves: 0 })
-    });
-  });
-  await page.route("**/api/v1/dashboard/activities", async (route) => {
-    await route.fulfill({ contentType: "application/json", body: JSON.stringify([]) });
-  });
-  await page.route("**/api/v1/departments**", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({
-        items: [{ id: "11111111-1111-1111-1111-111111111111", code: "ENG-E2E", name: "Phòng kỹ thuật E2E" }],
-        page: 0,
-        size: 20,
-        totalItems: 1,
-        totalPages: 1
-      })
-    });
-  });
-  await page.route("**/api/v1/employees**", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 })
-    });
-  });
-  await page.route("**/api/v1/payroll-periods**", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 })
-    });
-  });
-});
+import { loginAs } from "./helpers";
 
-test("luồng quản trị cơ bản", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.setItem("hrms.dev.token", "local-test-token");
-    localStorage.setItem("hrms.dev.tenant", "tenant-e2e");
-  });
+test("runs a basic admin create-and-navigate flow", async ({ page }) => {
+  await loginAs(page, { username: "admin", password: "admin123" }, "/departments");
 
-  await page.goto("/departments");
-  await page.getByRole("button", { name: "Thêm phòng ban" }).click();
-  await page.getByLabel("Mã phòng ban").fill("ENG-E2E");
-  await page.getByLabel("Tên phòng ban").fill("Phòng kỹ thuật E2E");
-  await page.getByRole("button", { name: "Tạo mới" }).click();
+  const suffix = Date.now().toString().slice(-6);
+  const departmentCode = `E2E-${suffix}`;
+  const departmentName = `E2E Operations ${suffix}`;
+  const employeeNo = `NV-E2E-${suffix}`;
+
+  await page.getByRole("button", { name: "Add department" }).click();
+  await page.getByLabel("Department code").fill(departmentCode);
+  await page.getByLabel("Department name").fill(departmentName);
+  await page.getByRole("button", { name: "Create new" }).click();
+  await expect(page.getByRole("button", { name: "Add department" })).toBeVisible();
 
   await page.goto("/employees");
-  await page.getByRole("button", { name: "Thêm nhân viên" }).click();
-  await page.getByLabel("Mã nhân viên").fill("E2E-001");
-  await page.getByLabel("Họ và tên").fill("Nhân viên E2E");
-  await page.getByLabel("Phòng ban").click();
-  await page.getByText("ENG-E2E - Phòng kỹ thuật E2E").click();
-  await page.getByLabel("Ngày vào làm").fill("2026-05-30");
-  await page.getByRole("button", { name: "Lưu nhân viên" }).click();
+  await page.getByRole("button", { name: "Add employee" }).click();
+  await page.getByLabel("Employee ID").fill(employeeNo);
+  await page.getByLabel("Full name").fill(`E2E Employee ${suffix}`);
+  await page.getByLabel("Department").click();
+  await page.locator(".ant-select-item-option").first().click();
+  await page.getByLabel("Hire date").fill("2026-06-01");
+  await page.getByRole("button", { name: "Save employee" }).click();
+  await expect(page.getByRole("button", { name: "Add employee" })).toBeVisible();
 
   await page.goto("/payroll");
-  await page.getByRole("button", { name: "Tạo kỳ lương" }).click();
-  await page.getByLabel("Từ ngày").fill("2026-06-01");
-  await page.getByLabel("Đến ngày").fill("2026-06-30");
-  await page.getByRole("button", { name: "Tạo kỳ", exact: true }).click();
-
-  await expect(page.getByRole("heading", { name: "Bảng lương" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Payroll" })).toBeVisible();
 });

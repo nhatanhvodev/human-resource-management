@@ -40,13 +40,17 @@ public class NotificationController {
     @PostMapping
     @PreAuthorize("hasAuthority('notification:create')")
     public NotificationResponse create(@RequestBody CreateNotificationRequest request) {
-        return toResponse(service.create(request.recipientId(), request.title(), request.body(), request.type()));
+        return toResponse(service.create(request.recipientId(), request.title(), request.body(),
+            request.type(), request.detail(), request.fileUrl(), request.fileName()));
     }
 
     private static NotificationResponse toResponse(Notification n) {
-        return new NotificationResponse(n.getId(), n.getTitle(), n.getBody(), n.getType(), n.isRead(), n.getCreatedAt());
+        return new NotificationResponse(n.getId(), n.getTitle(), n.getBody(), n.getType(), n.isRead(), n.getCreatedAt(),
+            n.getCreatorName(), n.getDetail(), n.getFileUrl(), n.getFileName());
     }
 
-    public record CreateNotificationRequest(UUID recipientId, String title, String body, String type) {}
-    public record NotificationResponse(UUID id, String title, String body, String type, boolean isRead, Instant createdAt) {}
+    public record CreateNotificationRequest(UUID recipientId, String title, String body, String type,
+                                            String detail, String fileUrl, String fileName) {}
+    public record NotificationResponse(UUID id, String title, String body, String type, boolean isRead, Instant createdAt,
+                                       String creatorName, String detail, String fileUrl, String fileName) {}
 }

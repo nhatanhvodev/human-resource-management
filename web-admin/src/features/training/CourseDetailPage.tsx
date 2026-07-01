@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { StatusTag } from "../../shared/ui/StatusTag";
@@ -26,14 +27,14 @@ export default function CourseDetailPage() {
     if (!id) return;
     setLoading(true);
     try {
-      const coursesRes = await apiClient.get<PageResponse<Course>>("/training/courses", { params: { page: 0, size: 100 } });
+      const coursesRes = await apiClient.get<PageResponse<Course>>(API.TRAINING.COURSES, { params: { page: 0, size: 100 } });
       const found = (coursesRes.data.items ?? []).find(c => c.id === id) ?? null;
       setCourse(found);
 
-      const enrollRes = await apiClient.get<Enrollment[]>(`/training/enrollments/course/${id}`);
+      const enrollRes = await apiClient.get<Enrollment[]>(`${API.TRAINING.ENROLLMENTS}/course/${id}`);
       setEnrollments(enrollRes.data ?? []);
 
-      const empRes = await apiClient.get<PageResponse<Employee>>("/employees", { params: { page: 0, size: 200, status: "ACTIVE" } });
+      const empRes = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 200, status: "ACTIVE" } });
       setEmployees(empRes.data.items ?? []);
     } catch {} finally { setLoading(false); }
   }, [id]);
@@ -45,7 +46,7 @@ export default function CourseDetailPage() {
   const columns = useMemo<ColumnsType<Enrollment>>(() => [
     {
       title: t("common.employee"), dataIndex: "employeeId",
-      render: (v: string) => employeeById.get(v)?.fullName ?? v.slice(0, 8)
+      render: (v: string) => employeeById.get(v)?.fullName ?? "-"
     },
     {
       title: t("pages.training.progress"), dataIndex: "progress", width: 200,

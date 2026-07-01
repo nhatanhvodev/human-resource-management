@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -33,7 +34,7 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<Template[]>("/onboarding/templates");
+      const res = await apiClient.get<Template[]>(API.ONBOARDING.TEMPLATES);
       setTemplates(res.data);
     } catch {
       setError(t("pages.onboarding.loadError"));
@@ -44,14 +45,14 @@ export default function OnboardingPage() {
 
   const loadEmployees = useCallback(async () => {
     try {
-      const res = await apiClient.get<PageResponse<Employee>>("/employees", { params: { page: 0, size: 100, status: "ACTIVE" } });
+      const res = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 100, status: "ACTIVE" } });
       setEmployees(res.data.items ?? []);
     } catch { setEmployees([]); }
   }, []);
 
   const loadTemplateTasks = async (id: string) => {
     try {
-      const res = await apiClient.get<TemplateTask[]>(`/onboarding/templates/${id}/tasks`);
+      const res = await apiClient.get<TemplateTask[]>(`${API.ONBOARDING.TEMPLATES}/${id}/tasks`);
       setTemplateTasks(prev => ({ ...prev, [id]: res.data }));
     } catch {}
   };
@@ -62,7 +63,7 @@ export default function OnboardingPage() {
   const createTemplate = async (values: { name: string; description: string }) => {
     setSaving(true);
     try {
-      await apiClient.post("/onboarding/templates", values);
+      await apiClient.post(API.ONBOARDING.TEMPLATES, values);
       form.resetFields();
       setOpenCreateTemplate(false);
       await loadTemplates();
@@ -72,7 +73,7 @@ export default function OnboardingPage() {
 
   const deleteTemplate = async (id: string) => {
     setSaving(true);
-    try { await apiClient.delete(`/onboarding/templates/${id}`); await loadTemplates(); }
+    try { await apiClient.delete(`${API.ONBOARDING.TEMPLATES}/${id}`); await loadTemplates(); }
     catch { setError(t("pages.onboarding.deleteError")); }
     finally { setSaving(false); }
   };
@@ -80,7 +81,7 @@ export default function OnboardingPage() {
   const startOnboarding = async (values: { employeeId: string; templateId: string }) => {
     setSaving(true);
     try {
-      await apiClient.post("/onboarding/start", values);
+      await apiClient.post(API.ONBOARDING.START, values);
       form.resetFields();
       setOpenStart(false);
     } catch { setError(t("pages.onboarding.startError")); }
@@ -127,7 +128,7 @@ export default function OnboardingPage() {
               <AppTable<Template> rowKey="id" loading={loading} columns={templateColumns} dataSource={templates} pagination={false} />
               {Object.entries(templateTasks).map(([id, tasks]) => (
                 <div key={id} style={{ marginTop: 16 }}>
-                  <h4>{t("pages.onboarding.tasksForTemplate", { name: templates.find(t => t.id === id)?.name ?? id.slice(0, 8) })}</h4>
+                  <h4>{t("pages.onboarding.tasksForTemplate", { name: templates.find(t => t.id === id)?.name ?? "-" })}</h4>
                   <AppTable<TemplateTask> rowKey="id" loading={false}
                     columns={[
                       { title: t("pages.onboarding.order"), dataIndex: "orderIndex", width: 80 },

@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
+import type { PageResponse } from '../../shared/api/types';
 import { getEmployeeId } from '../../shared/auth/jwt';
 import { StatusTag } from '../../shared/ui/StatusTag';
 
@@ -32,13 +33,14 @@ export default function MyTrainingPage() {
           apiClient.get<Enrollment[]>(`/training/enrollments/employee/${empId}`, {
             headers: { 'X-Employee-Id': empId }
           }),
-          apiClient.get<Course[]>('/training/courses', {
+          apiClient.get<PageResponse<Course>>('/training/courses', {
+            params: { page: 0, size: 20 },
             headers: { 'X-Employee-Id': empId }
           })
         ]);
         if (mounted) {
           setEnrollments(Array.isArray(eRes.data) ? eRes.data : []);
-          setCourses(Array.isArray(cRes.data) ? cRes.data : []);
+          setCourses(cRes.data.items ?? []);
         }
       } finally { if (mounted) setLoading(false); }
     })();
@@ -46,7 +48,11 @@ export default function MyTrainingPage() {
   }, []);
 
   const eCols: ColumnsType<Enrollment> = [
-    { title: t('ess.courseId'), dataIndex: 'courseId' },
+    {
+      title: t('pages.training.courseTitle'),
+      dataIndex: 'courseId',
+      render: (courseId: string) => courses.find((course) => course.id === courseId)?.title ?? '-'
+    },
     { title: t('pages.training.progress'), dataIndex: 'progress', render: (v: number) => <Progress percent={v} size="small" /> },
     { title: t('common.status'), dataIndex: 'status', render: (v: string) => <StatusTag value={v} /> }
   ];

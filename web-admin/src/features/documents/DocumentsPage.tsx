@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { PageToolbar } from "../../shared/ui/PageToolbar";
@@ -20,18 +21,21 @@ type DocumentItem = {
   uploadedAt: string;
 };
 
+type Employee = { id: string; employeeNo: string; fullName: string };
+
 export default function DocumentsPage() {
   const { t } = useTranslation();
   const [items, setItems] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<PageResponse<DocumentItem>>("/documents", {
+      const response = await apiClient.get<PageResponse<DocumentItem>>(API.DOCUMENTS, {
         params: { page: 0, size: 100 }
       });
       setItems(response.data.items ?? []);
@@ -42,13 +46,27 @@ export default function DocumentsPage() {
     }
   }, [t]);
 
+  const loadEmployees = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
+        params: { page: 0, size: 200, status: "ACTIVE" }
+      });
+      setEmployees(response.data.items ?? []);
+    } catch {
+      setEmployees([]);
+    }
+  }, []);
+
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void loadEmployees(); }, [loadEmployees]);
+
+  const employeeById = useMemo(() => new Map(employees.map((employee) => [employee.id, employee])), [employees]);
 
   const handleDelete = async (id: string) => {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.delete(`/documents/${id}`);
+      await apiClient.delete(`${API.DOCUMENTS}/${id}`);
       await load();
     } catch {
       setError(t("pages.documents.deleteError"));
@@ -68,16 +86,29 @@ export default function DocumentsPage() {
     { title: t("pages.documents.fileType"), dataIndex: "fileType", width: 100 },
     { title: t("pages.documents.fileSize"), dataIndex: "fileSize", width: 100, render: (v: number) => formatSize(v) },
     { title: t("pages.documents.category"), dataIndex: "category", width: 120 },
-    { title: t("common.employee"), dataIndex: "employeeId", width: 120, render: (v: string) => v.slice(0, 8) },
+    {
+      title: t("common.employee"),
+      dataIndex: "employeeId",
+      width: 200,
+      render: (v: string) => {
+        const employee = employeeById.get(v);
+        return employee ? `${employee.employeeNo} - ${employee.fullName}` : "-";
+      }
+    },
     { title: t("pages.documents.uploadedAt"), dataIndex: "uploadedAt", width: 180 },
     {
-      title: "", key: "actions", width: 80,
+      title: "", key: "actions", width: 140,
       render: (_, row) => (
-        <Button size="small" danger icon={<DeleteOutlined />} loading={saving}
-          onClick={() => void handleDelete(row.id)} />
+        <Space>
+          <Button size="small" onClick={() => window.open(`/api/v1/documents/${row.id}/download`, '_blank')}>
+            {t("common.download")}
+          </Button>
+          <Button size="small" danger icon={<DeleteOutlined />} loading={saving}
+            onClick={() => void handleDelete(row.id)} />
+        </Space>
       )
     }
-  ], [saving, t]);
+  ], [employeeById, saving, t]);
 
   return (
     <>

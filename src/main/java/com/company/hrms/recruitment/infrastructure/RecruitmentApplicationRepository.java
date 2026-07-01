@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RecruitmentApplicationRepository extends JpaRepository<RecruitmentApplication, UUID> {
+    long countByTenantId(String tenantId);
+
     Optional<RecruitmentApplication> findByIdAndTenantId(UUID id, String tenantId);
 
     Page<RecruitmentApplication> findAllByTenantId(String tenantId, Pageable pageable);

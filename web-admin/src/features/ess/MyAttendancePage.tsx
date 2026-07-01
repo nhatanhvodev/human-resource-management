@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
+import type { PageResponse } from '../../shared/api/types';
 import { getEmployeeId } from '../../shared/auth/jwt';
 import { StatusTag } from '../../shared/ui/StatusTag';
 
@@ -22,10 +23,11 @@ export default function MyAttendancePage() {
     setLoading(true);
     try {
       const empId = getEmployeeId();
-      const res = await apiClient.get<TimeEntry[]>('/time-entries/mine', {
+      const res = await apiClient.get<PageResponse<TimeEntry>>('/self/time-entries', {
+        params: { page: 0, size: 20 },
         headers: { 'X-Employee-Id': empId }
       });
-      setData(Array.isArray(res.data) ? res.data : []);
+      setData(res.data.items ?? []);
     } finally { setLoading(false); }
   };
 
@@ -33,7 +35,7 @@ export default function MyAttendancePage() {
 
   const clockIn = async () => {
     try {
-      await apiClient.post('/time-entries/clock-in', null, {
+      await apiClient.post('/self/time-entries/clock-in', null, {
         headers: { 'X-Employee-Id': getEmployeeId() }
       });
       await load();
@@ -42,7 +44,7 @@ export default function MyAttendancePage() {
 
   const clockOut = async () => {
     try {
-      await apiClient.post('/time-entries/clock-out', null, {
+      await apiClient.post('/self/time-entries/clock-out', null, {
         headers: { 'X-Employee-Id': getEmployeeId() }
       });
       await load();

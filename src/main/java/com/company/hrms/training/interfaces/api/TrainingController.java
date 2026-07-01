@@ -29,7 +29,7 @@ public class TrainingController {
     }
 
     @GetMapping("/courses")
-    @PreAuthorize("hasAuthority('training:read')")
+    @PreAuthorize("hasAuthority('training:read') or hasAuthority('self:access')")
     public PageResponse<CourseResponse> listCourses(Pageable pageable) {
         return PageResponse.from(service.listCourses(pageable).map(TrainingController::toCourseResponse));
     }
@@ -41,7 +41,7 @@ public class TrainingController {
     }
 
     @GetMapping("/enrollments/employee/{employeeId}")
-    @PreAuthorize("hasAuthority('training:read')")
+    @PreAuthorize("hasAuthority('training:read') or hasAuthority('self:access')")
     public List<EnrollmentResponse> listEnrollmentsByEmployee(@PathVariable UUID employeeId) {
         return service.listEnrollmentsByEmployee(employeeId).stream()
             .map(TrainingController::toEnrollmentResponse).toList();

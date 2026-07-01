@@ -2,10 +2,10 @@ import {
   AuditOutlined,
   BookOutlined,
   CalendarOutlined,
-  ClockCircleOutlined,
   CompassOutlined,
   DashboardOutlined,
   FileOutlined,
+  LogoutOutlined,
   MenuOutlined,
   NotificationOutlined,
   SafetyCertificateOutlined,
@@ -16,14 +16,14 @@ import {
   UserOutlined,
   WalletOutlined
 } from "@ant-design/icons";
-import { Button, Drawer, Layout, Menu, Tag, Typography } from "antd";
-import { useEffect, useState } from "react";
+import { Button, Drawer, Layout, Menu, Typography } from "antd";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { LanguageSwitcher } from "../../shared/i18n/LanguageSwitcher";
-import { getAuthorities } from "../../shared/auth/jwt";
-import { DEV_SETTINGS_CHANGED, loadDevSettings } from "../../shared/config/devSettingsStore";
+import { useAccess } from "../../shared/auth/access";
+import { clearDevToken } from "../../shared/config/devSettingsStore";
 import { NotificationBell } from "../../shared/ui/NotificationBell";
 
 const { Header, Content, Sider } = Layout;
@@ -37,7 +37,6 @@ const navItems = [
   { key: "/leave", icon: <CalendarOutlined />, labelKey: "nav.leave", permission: "leave:read" },
   { key: "/payroll", icon: <WalletOutlined />, labelKey: "nav.payroll", permission: "payroll:read" },
   { key: "/performance", icon: <SolutionOutlined />, labelKey: "nav.performance", permission: "performance:read" },
-  { key: "/attendance", icon: <ClockCircleOutlined />, labelKey: "nav.attendance", permission: "attendance:read" },
   { key: "/documents", icon: <FileOutlined />, labelKey: "nav.documents", permission: "document:read" },
   { key: "/onboarding", icon: <CompassOutlined />, labelKey: "nav.onboarding", permission: "onboarding:read" },
   { key: "/training", icon: <BookOutlined />, labelKey: "nav.training", permission: "training:read" },
@@ -53,10 +52,9 @@ export function AdminShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [devSettings, setDevSettings] = useState(loadDevSettings);
-  const authorities = getAuthorities(devSettings.token);
-  const visibleNavItems = navItems.filter((item) => !item.permission || authorities.includes(item.permission));
-  const selectedKey = visibleNavItems.find((item) => location.pathname.startsWith(item.key))?.key ?? "/settings";
+  const access = useAccess();
+  const visibleNavItems = navItems.filter((item) => !item.permission || access.hasAuthority(item.permission));
+  const selectedKey = visibleNavItems.find((item) => location.pathname.startsWith(item.key))?.key ?? "";
   const menuItems = visibleNavItems.map((item) => ({ key: item.key, icon: item.icon, label: t(item.labelKey) }));
 
   const onNavigate = (key: string) => {
@@ -64,18 +62,10 @@ export function AdminShell() {
     setMobileNavOpen(false);
   };
 
-  useEffect(() => {
-    const syncDevSettings = () => setDevSettings(loadDevSettings());
-    window.addEventListener("storage", syncDevSettings);
-    window.addEventListener(DEV_SETTINGS_CHANGED, syncDevSettings);
-    window.addEventListener("focus", syncDevSettings);
-
-    return () => {
-      window.removeEventListener("storage", syncDevSettings);
-      window.removeEventListener(DEV_SETTINGS_CHANGED, syncDevSettings);
-      window.removeEventListener("focus", syncDevSettings);
-    };
-  }, []);
+  const onLogout = () => {
+    clearDevToken();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Layout className="app-shell">
@@ -98,30 +88,7 @@ export function AdminShell() {
           <div className="app-shell__status">
             <LanguageSwitcher />
             <NotificationBell />
-            <Tag
-              className="app-shell__status-tag"
-              color={devSettings.tenantId ? "blue" : "default"}
-              title={`${t("app.tenantId")}: ${devSettings.tenantId || t("app.notSet")}`}
-            >
-              <span className="app-shell__status-full">
-                {t("app.tenantId")}: {devSettings.tenantId || t("app.notSet")}
-              </span>
-              <span className="app-shell__status-short">
-                {t("app.tenantShort")} {devSettings.tenantId || "?"}
-              </span>
-            </Tag>
-            <Tag
-              className="app-shell__status-tag"
-              color={devSettings.token ? "green" : "gold"}
-              title={`Token: ${devSettings.token ? t("app.tokenReady") : t("app.tokenMissing")}`}
-            >
-              <span className="app-shell__status-full">
-                Token: {devSettings.token ? t("app.tokenReady") : t("app.tokenMissing")}
-              </span>
-              <span className="app-shell__status-short">
-                Token {devSettings.token ? "OK" : t("app.tokenMissing")}
-              </span>
-            </Tag>
+            <Button type="text" icon={<LogoutOutlined />} aria-label={t("auth.logout")} onClick={onLogout} />
           </div>
         </Header>
         <Content className="app-shell__content">

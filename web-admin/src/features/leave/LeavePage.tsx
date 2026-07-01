@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -48,14 +49,7 @@ type Holiday = {
   isRecurringYearly: boolean;
 };
 
-type OvertimeRecord = {
-  id: string;
-  employeeId: string;
-  employeeName?: string;
-  date: string;
-  hours: number;
-  status: string;
-};
+
 
 export default function LeavePage() {
   const { t } = useTranslation();
@@ -66,7 +60,7 @@ export default function LeavePage() {
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [activeTab, setActiveTab] = useState("requests");
-  const [form] = Form.useForm<{ employeeId: string; fromDate: string; toDate: string }>();
+  const [form] = Form.useForm<{ employeeId: string; fromDate: string; toDate: string; leaveType: string; reason: string }>();
 
   // --- Leave balances state ---
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
@@ -76,15 +70,11 @@ export default function LeavePage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [holidaysLoading, setHolidaysLoading] = useState(false);
 
-  // --- Overtime state ---
-  const [overtimeItems, setOvertimeItems] = useState<OvertimeRecord[]>([]);
-  const [overtimeLoading, setOvertimeLoading] = useState(false);
-
   const loadLeaveRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<PageResponse<LeaveRequest>>("/leave-requests", {
+      const response = await apiClient.get<PageResponse<LeaveRequest>>(API.LEAVE_REQUESTS, {
         params: { page: 0, size: 10 }
       });
       setItems(response.data.items ?? []);
@@ -97,22 +87,33 @@ export default function LeavePage() {
 
   const loadEmployees = useCallback(async () => {
     try {
-      const response = await apiClient.get<PageResponse<Employee>>("/employees", {
+      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
         params: { page: 0, size: 100, status: "ACTIVE" }
       });
-      setEmployees(response.data.items ?? []);
+      const nextEmployees = response.data.items ?? [];
+      setEmployees(nextEmployees);
+      return nextEmployees;
     } catch {
       setEmployees([]);
+      return [];
     }
   }, []);
 
-  const loadLeaveBalances = useCallback(async () => {
+  const loadLeaveBalances = useCallback(async (sourceEmployees: Employee[]) => {
     setBalancesLoading(true);
     try {
-      const response = await apiClient.get<PageResponse<LeaveBalance>>("/leave-balances", {
-        params: { page: 0, size: 50 }
-      });
-      setBalances(response.data.items ?? []);
+      const responses = await Promise.all(
+        sourceEmployees.slice(0, 50).map(async (employee) => {
+          const response = await apiClient.get<LeaveBalance[]>(API.LEAVE_BALANCES, {
+            params: { employeeId: employee.id }
+          });
+          return response.data.map((balance) => ({
+            ...balance,
+            employeeName: employee.fullName
+          }));
+        })
+      );
+      setBalances(responses.flat());
     } catch {
       setBalances([]);
     } finally {
@@ -123,28 +124,12 @@ export default function LeavePage() {
   const loadHolidays = useCallback(async () => {
     setHolidaysLoading(true);
     try {
-      const response = await apiClient.get<PageResponse<Holiday>>("/holidays", {
-        params: { page: 0, size: 20 }
-      });
-      setHolidays(response.data.items ?? []);
+      const response = await apiClient.get<Holiday[]>(API.HOLIDAYS);
+      setHolidays(response.data ?? []);
     } catch {
       setHolidays([]);
     } finally {
       setHolidaysLoading(false);
-    }
-  }, []);
-
-  const loadOvertime = useCallback(async () => {
-    setOvertimeLoading(true);
-    try {
-      const response = await apiClient.get<PageResponse<OvertimeRecord>>("/overtime", {
-        params: { page: 0, size: 50 }
-      });
-      setOvertimeItems(response.data.items ?? []);
-    } catch {
-      setOvertimeItems([]);
-    } finally {
-      setOvertimeLoading(false);
     }
   }, []);
 
@@ -153,28 +138,20 @@ export default function LeavePage() {
   }, [loadLeaveRequests]);
 
   useEffect(() => {
-    void loadEmployees();
-  }, [loadEmployees]);
-
-  useEffect(() => {
-    void loadLeaveBalances();
-  }, [loadLeaveBalances]);
+    void loadEmployees().then((nextEmployees) => loadLeaveBalances(nextEmployees));
+  }, [loadEmployees, loadLeaveBalances]);
 
   useEffect(() => {
     void loadHolidays();
   }, [loadHolidays]);
 
-  useEffect(() => {
-    void loadOvertime();
-  }, [loadOvertime]);
-
   const employeeById = useMemo(() => new Map(employees.map((employee) => [employee.id, employee])), [employees]);
 
-  const createLeaveRequest = async (values: { employeeId: string; fromDate: string; toDate: string }) => {
+  const createLeaveRequest = async (values: { employeeId: string; fromDate: string; toDate: string; leaveType: string; reason: string }) => {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post("/leave-requests", values);
+      await apiClient.post(API.LEAVE_REQUESTS, values);
       form.resetFields();
       setOpenCreate(false);
       await loadLeaveRequests();
@@ -189,23 +166,13 @@ export default function LeavePage() {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post(`/leave-requests/${id}/${action}`);
+      await apiClient.post(`${API.LEAVE_REQUESTS}/${id}/${action}`);
       await loadLeaveRequests();
+      // Reload leave balances after approval/rejection
+      const nextEmployees = await loadEmployees();
+      await loadLeaveBalances(nextEmployees);
     } catch {
       setError(action === "approve" ? t("pages.leave.approveError") : t("pages.leave.rejectError"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const transitionOvertime = async (id: string, action: "approve" | "reject") => {
-    setSaving(true);
-    setError(null);
-    try {
-      await apiClient.post(`/overtime/${id}/${action}`);
-      await loadOvertime();
-    } catch {
-      setError(action === "approve" ? t("pages.leave.overtimeApproveError") : t("pages.leave.overtimeRejectError"));
     } finally {
       setSaving(false);
     }
@@ -218,7 +185,7 @@ export default function LeavePage() {
         dataIndex: "employeeName",
         render: (value: string | undefined, row) => {
           const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
-          return value ?? employee?.fullName ?? (row.employeeId ? row.employeeId.slice(0, 8) : "");
+          return value ?? employee?.fullName ?? "-";
         }
       },
       {
@@ -283,7 +250,7 @@ export default function LeavePage() {
         dataIndex: "employeeName",
         render: (value: string | undefined, row) => {
           const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
-          return value ?? employee?.fullName ?? (row.employeeId ? row.employeeId.slice(0, 8) : "");
+          return value ?? employee?.fullName ?? "-";
         }
       },
       {
@@ -342,63 +309,6 @@ export default function LeavePage() {
     [t]
   );
 
-  const overtimeColumns = useMemo<ColumnsType<OvertimeRecord>>(
-    () => [
-      {
-        title: t("common.employee"),
-        dataIndex: "employeeName",
-        render: (value: string | undefined, row) => {
-          const employee = row.employeeId ? employeeById.get(row.employeeId) : undefined;
-          return value ?? employee?.fullName ?? (row.employeeId ? row.employeeId.slice(0, 8) : "");
-        }
-      },
-      {
-        title: t("common.date"),
-        dataIndex: "date",
-        width: 150
-      },
-      {
-        title: t("pages.leave.hours"),
-        dataIndex: "hours",
-        width: 100
-      },
-      {
-        title: t("common.status"),
-        dataIndex: "status",
-        width: 160,
-        render: (value: string) => <StatusTag value={value} />
-      },
-      {
-        title: t("common.actions"),
-        key: "actions",
-        width: 190,
-        render: (_, row) => {
-          const isPending = row.status === "PENDING";
-          return (
-            <Space>
-              <Button
-                size="small"
-                disabled={!isPending || saving}
-                onClick={() => void transitionOvertime(row.id, "approve")}
-              >
-                {t("common.approve")}
-              </Button>
-              <Button
-                size="small"
-                danger
-                disabled={!isPending || saving}
-                onClick={() => void transitionOvertime(row.id, "reject")}
-              >
-                {t("common.reject")}
-              </Button>
-            </Space>
-          );
-        }
-      }
-    ],
-    [employeeById, saving, t]
-  );
-
   const tabItems = [
     {
       key: "requests",
@@ -449,23 +359,6 @@ export default function LeavePage() {
           pagination={false}
         />
       )
-    },
-    {
-      key: "overtime",
-      label: t("pages.leave.overtime"),
-      children: (
-        <>
-          {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
-
-          <AppTable<OvertimeRecord>
-            rowKey="id"
-            loading={overtimeLoading}
-            columns={overtimeColumns}
-            dataSource={overtimeItems}
-            pagination={false}
-          />
-        </>
-      )
     }
   ];
 
@@ -495,6 +388,22 @@ export default function LeavePage() {
           </Form.Item>
           <Form.Item label={t("common.toDate")} name="toDate" htmlFor="leave-end" rules={[{ required: true, message: t("pages.leave.selectEndDate") }]}>
             <Input id="leave-end" type="date" />
+          </Form.Item>
+          <Form.Item label={t("pages.leave.requestType")} name="leaveType" htmlFor="leave-type" rules={[{ required: true, message: t("pages.leave.selectLeaveType") }]}>
+            <Select
+              id="leave-type"
+              placeholder={t("pages.leave.selectLeaveType")}
+              options={[
+                { value: "ANNUAL", label: t("leaveType.ANNUAL", "Annual") },
+                { value: "SICK", label: t("leaveType.SICK", "Sick") },
+                { value: "UNPAID", label: t("leaveType.UNPAID", "Unpaid") },
+                { value: "MATERNITY", label: t("leaveType.MATERNITY", "Maternity") },
+                { value: "PATERNITY", label: t("leaveType.PATERNITY", "Paternity") }
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label={t("common.reason")} name="reason" htmlFor="leave-reason">
+            <Input.TextArea id="leave-reason" rows={3} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={saving} disabled={!employees.length}>
             {t("pages.leave.saveRequest")}

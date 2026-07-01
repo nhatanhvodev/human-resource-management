@@ -7,6 +7,7 @@ import com.company.hrms.recruitment.domain.Candidate;
 import com.company.hrms.recruitment.domain.Interview;
 import com.company.hrms.recruitment.domain.InterviewStatus;
 import com.company.hrms.recruitment.domain.JobPosting;
+import com.company.hrms.recruitment.domain.JobPostingStatus;
 import com.company.hrms.recruitment.domain.RecruitmentApplication;
 import com.company.hrms.recruitment.infrastructure.CandidateRepository;
 import com.company.hrms.recruitment.infrastructure.InterviewRepository;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -53,7 +55,7 @@ public class RecruitmentService {
 
     @Transactional
     public Candidate createCandidate(String fullName) {
-        return candidateRepository.save(new Candidate(UUID.randomUUID(), TenantContext.get(), fullName));
+        return candidateRepository.save(new Candidate(UUID.randomUUID(), TenantContext.get(), fullName, null, null, null));
     }
 
     @Transactional
@@ -66,23 +68,64 @@ public class RecruitmentService {
         return candidate;
     }
 
+    @Transactional
+    public void deleteCandidate(UUID id) {
+        String tenantId = TenantContext.get();
+        Candidate candidate = candidateRepository.findById(id)
+            .filter(existing -> tenantId.equals(existing.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("CANDIDATE_NOT_FOUND"));
+        candidateRepository.delete(candidate);
+    }
+
     @Transactional(readOnly = true)
     public Page<JobPosting> listJobPostings(Pageable pageable) {
         return jobPostingRepository.findAllByTenantId(TenantContext.get(), pageable);
     }
 
     @Transactional
-    public JobPosting createJobPosting(String title) {
-        return jobPostingRepository.save(new JobPosting(UUID.randomUUID(), TenantContext.get(), title));
+    public JobPosting createJobPosting(String title, String description, UUID departmentId,
+                                        BigDecimal salaryRangeMin, BigDecimal salaryRangeMax,
+                                        String requirements, String location, Integer headcount) {
+        return jobPostingRepository.save(new JobPosting(UUID.randomUUID(), TenantContext.get(), title,
+            description, departmentId, JobPostingStatus.DRAFT,
+            salaryRangeMin, salaryRangeMax, requirements, location, headcount));
     }
 
     @Transactional
-    public JobPosting updateJobPosting(UUID id, String title) {
+    public JobPosting updateJobPosting(UUID id, String title, String description, UUID departmentId,
+                                        BigDecimal salaryRangeMin, BigDecimal salaryRangeMax,
+                                        String requirements, String location, Integer headcount) {
         String tenantId = TenantContext.get();
         JobPosting jobPosting = jobPostingRepository.findById(id)
             .filter(existing -> tenantId.equals(existing.getTenantId()))
             .orElseThrow(() -> new NotFoundException("JOB_POSTING_NOT_FOUND"));
         jobPosting.updateTitle(title);
+        jobPosting.updateDescription(description);
+        jobPosting.updateDepartmentId(departmentId);
+        jobPosting.updateSalaryRangeMin(salaryRangeMin);
+        jobPosting.updateSalaryRangeMax(salaryRangeMax);
+        jobPosting.updateRequirements(requirements);
+        jobPosting.updateLocation(location);
+        jobPosting.updateHeadcount(headcount);
+        return jobPosting;
+    }
+
+    @Transactional
+    public void deleteJobPosting(UUID id) {
+        String tenantId = TenantContext.get();
+        JobPosting jobPosting = jobPostingRepository.findById(id)
+            .filter(existing -> tenantId.equals(existing.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("JOB_POSTING_NOT_FOUND"));
+        jobPostingRepository.delete(jobPosting);
+    }
+
+    @Transactional
+    public JobPosting changeJobPostingStatus(UUID id, String status) {
+        String tenantId = TenantContext.get();
+        JobPosting jobPosting = jobPostingRepository.findById(id)
+            .filter(existing -> tenantId.equals(existing.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("JOB_POSTING_NOT_FOUND"));
+        jobPosting.updateStatus(JobPostingStatus.valueOf(status.toUpperCase(Locale.ROOT)));
         return jobPosting;
     }
 
@@ -106,8 +149,10 @@ public class RecruitmentService {
             .orElseThrow(() -> new IllegalArgumentException("CANDIDATE_NOT_FOUND"));
         JobPosting jobPosting = jobPostingRepository.findById(jobPostingId)
             .orElseThrow(() -> new IllegalArgumentException("JOB_POSTING_NOT_FOUND"));
+        String tenantId = TenantContext.get();
+        String applicationNo = "HS%06d".formatted(recruitmentApplicationRepository.countByTenantId(tenantId) + 1);
         return recruitmentApplicationRepository.save(
-            new RecruitmentApplication(UUID.randomUUID(), TenantContext.get(), candidate, jobPosting, status)
+            new RecruitmentApplication(UUID.randomUUID(), tenantId, applicationNo, candidate, jobPosting, status)
         );
     }
 

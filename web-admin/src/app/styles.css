@@ -95,8 +95,9 @@ body {
 
 .app-shell__content {
   height: calc(100vh - 56px);
-  overflow: hidden;
+  overflow: auto;
   padding: 24px;
+  padding-bottom: 40px;
 }
 
 .page-header {
@@ -145,6 +146,8 @@ body {
 
 .app-table .ant-pagination {
   margin: 12px 0 0;
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .app-table__empty,
@@ -160,6 +163,69 @@ body {
 
 .error-page {
   padding: 24px;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(14, 116, 144, 0.10), rgba(22, 101, 52, 0.08)),
+    #f5f7fb;
+}
+
+.login-page__toolbar {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+}
+
+.login-page__panel {
+  width: min(100%, 440px);
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e1e7f0;
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(23, 32, 51, 0.12);
+}
+
+.login-page__intro {
+  margin-bottom: 22px;
+}
+
+.login-page__eyebrow {
+  color: #0f766e;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.login-page__intro h1 {
+  margin: 6px 0 8px;
+  color: #172033;
+  font-size: 28px;
+  line-height: 36px;
+}
+
+.login-page__intro p {
+  margin: 0;
+  color: #667085;
+}
+
+.login-page__alert {
+  margin-bottom: 16px;
+}
+
+.login-page__demo {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.login-page__demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 @media (max-width: 768px) {
@@ -196,8 +262,12 @@ body {
     display: inline;
   }
 
+  .app-shell__content {
+    padding-bottom: 72px;
+  }
+
   .app-table .ant-table-body {
-    max-height: calc(100vh - 300px) !important;
+    max-height: clamp(240px, calc(100vh - 440px), 420px) !important;
   }
 }
 

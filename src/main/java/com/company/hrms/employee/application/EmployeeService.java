@@ -9,6 +9,7 @@ import com.company.hrms.employee.infrastructure.PositionRepository;
 import com.company.hrms.organization.domain.Department;
 import com.company.hrms.organization.infrastructure.DepartmentRepository;
 import com.company.hrms.shared.exception.ConflictException;
+import com.company.hrms.shared.security.DepartmentScopeService;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +25,16 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final PositionRepository positionRepository;
+    private final DepartmentScopeService departmentScopeService;
 
     public EmployeeService(EmployeeRepository employeeRepository,
                            DepartmentRepository departmentRepository,
-                           PositionRepository positionRepository) {
+                           PositionRepository positionRepository,
+                           DepartmentScopeService departmentScopeService) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.positionRepository = positionRepository;
+        this.departmentScopeService = departmentScopeService;
     }
 
     @Transactional
@@ -52,17 +56,34 @@ public class EmployeeService {
         String tenantId = TenantContext.get();
         String normalizedQuery = query == null ? null : query.trim();
         String normalizedStatus = status == null ? null : status.trim();
+        var scopedDepartmentIds = departmentScopeService.currentScopedDepartmentIds();
+        boolean scoped = !scopedDepartmentIds.isEmpty();
 
         if (normalizedStatus != null && !normalizedStatus.isEmpty()) {
             EmploymentStatus employmentStatus = parseStatus(normalizedStatus);
             if (normalizedQuery != null && !normalizedQuery.isEmpty()) {
+                if (scoped) {
+                    return employeeRepository.findByTenantIdAndEmploymentStatusAndDepartment_IdInAndFullNameContainingIgnoreCase(
+                        tenantId, employmentStatus, scopedDepartmentIds, normalizedQuery, pageable);
+                }
                 return employeeRepository.findByTenantIdAndEmploymentStatusAndFullNameContainingIgnoreCase(
                     tenantId, employmentStatus, normalizedQuery, pageable);
+            }
+            if (scoped) {
+                return employeeRepository.findByTenantIdAndEmploymentStatusAndDepartment_IdIn(
+                    tenantId, employmentStatus, scopedDepartmentIds, pageable);
             }
             return employeeRepository.findByTenantIdAndEmploymentStatus(tenantId, employmentStatus, pageable);
         }
         if (normalizedQuery != null && !normalizedQuery.isEmpty()) {
+            if (scoped) {
+                return employeeRepository.findByTenantIdAndDepartment_IdInAndFullNameContainingIgnoreCase(
+                    tenantId, scopedDepartmentIds, normalizedQuery, pageable);
+            }
             return employeeRepository.findByTenantIdAndFullNameContainingIgnoreCase(tenantId, normalizedQuery, pageable);
+        }
+        if (scoped) {
+            return employeeRepository.findByTenantIdAndDepartment_IdIn(tenantId, scopedDepartmentIds, pageable);
         }
         return employeeRepository.findAllByTenantId(tenantId, pageable);
     }

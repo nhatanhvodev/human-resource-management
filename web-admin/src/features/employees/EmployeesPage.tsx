@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import { hasAuthority } from "../../shared/auth/jwt";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
@@ -117,7 +118,7 @@ export default function EmployeesPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<PageResponse<Employee>>("/employees", {
+      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
         params: { page, size: pageSize, status: status === "ALL" ? undefined : status }
       });
       setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
@@ -131,7 +132,7 @@ export default function EmployeesPage() {
 
   const loadDepartments = useCallback(async () => {
     try {
-      const response = await apiClient.get<PageResponse<Department>>("/departments", {
+      const response = await apiClient.get<PageResponse<Department>>(API.DEPARTMENTS, {
         params: { page: 0, size: 100 }
       });
       setDepartments(response.data.items ?? []);
@@ -142,7 +143,7 @@ export default function EmployeesPage() {
 
   const loadPositions = useCallback(async () => {
     try {
-      const response = await apiClient.get<PageResponse<Position>>("/positions", {
+      const response = await apiClient.get<PageResponse<Position>>(API.POSITIONS, {
         params: { page: 0, size: 500 }
       });
       setPositions(response.data.items ?? []);
@@ -155,9 +156,9 @@ export default function EmployeesPage() {
     setDetailLoading(true);
     try {
       const [contractsRes, skillsRes, contactsRes] = await Promise.allSettled([
-        apiClient.get<PageResponse<EmployeeContract>>(`/employees/${id}/contracts`, { params: { page: 0, size: 50 } }),
-        apiClient.get<PageResponse<EmployeeSkill>>(`/employees/${id}/skills`, { params: { page: 0, size: 50 } }),
-        apiClient.get<PageResponse<EmergencyContact>>(`/employees/${id}/emergency-contacts`, { params: { page: 0, size: 50 } })
+        apiClient.get<PageResponse<EmployeeContract>>(`${API.EMPLOYEES}/${id}/contracts`, { params: { page: 0, size: 50 } }),
+        apiClient.get<PageResponse<EmployeeSkill>>(`${API.EMPLOYEES}/${id}/skills`, { params: { page: 0, size: 50 } }),
+        apiClient.get<PageResponse<EmergencyContact>>(`${API.EMPLOYEES}/${id}/emergency-contacts`, { params: { page: 0, size: 50 } })
       ]);
       setDetailContracts(contractsRes.status === "fulfilled" ? (contractsRes.value.data.items ?? []) : []);
       setDetailSkills(skillsRes.status === "fulfilled" ? (skillsRes.value.data.items ?? []) : []);
@@ -229,9 +230,9 @@ export default function EmployeesPage() {
         ...(values.positionId ? { positionId: values.positionId } : {})
       };
       if (editingEmployee) {
-        await apiClient.put(`/employees/${editingEmployee.id}/profile`, profilePayload);
+        await apiClient.put(`${API.EMPLOYEES}/${editingEmployee.id}/profile`, profilePayload);
       } else {
-        await apiClient.post("/employees", {
+        await apiClient.post(API.EMPLOYEES, {
           employeeNo: values.employeeNo?.trim(),
           fullName: profilePayload.fullName,
           departmentId: profilePayload.departmentId,
@@ -284,7 +285,7 @@ export default function EmployeesPage() {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.patch(`/employees/${employee.id}/status`, { employmentStatus: nextStatus });
+      await apiClient.patch(`${API.EMPLOYEES}/${employee.id}/status`, { employmentStatus: nextStatus });
       await loadEmployees();
     } catch {
       setError(t("pages.employees.statusError"));
@@ -297,7 +298,7 @@ export default function EmployeesPage() {
     setDeleting(true);
     setError(null);
     try {
-      await apiClient.delete(`/employees/${id}`);
+      await apiClient.delete(`${API.EMPLOYEES}/${id}`);
       await loadEmployees();
       message.success(t("pages.employees.deleteSuccess"));
     } catch {
@@ -311,7 +312,7 @@ export default function EmployeesPage() {
     if (!managerId) return;
     setManagerSaving(true);
     try {
-      await apiClient.put(`/employees/${employeeId}/manager`, { managerId });
+      await apiClient.put(`${API.EMPLOYEES}/${employeeId}/manager`, { managerId });
       message.success(t("pages.employees.managerAssigned"));
       // Update local detail state
       if (detailEmployee?.id === employeeId) {

@@ -1,15 +1,26 @@
+import { Result } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 import { Button, Form, Input } from "antd";
+import { Spin } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useAccess } from "../../shared/auth/access";
 import { loadDevSettings, saveDevSettings } from "../../shared/config/devSettingsStore";
 
 export default function DevSettingsPage() {
   const { t } = useTranslation();
+  const access = useAccess();
   const initialSettings = loadDevSettings();
   const [token, setToken] = useState(initialSettings.token);
   const [tenantId, setTenantId] = useState(initialSettings.tenantId);
+
+  if (access.loading) {
+    return <Spin style={{ display: "block", margin: "40px auto" }} />;
+  }
+  if (!access.hasAuthority("authz:update")) {
+    return <Result status="403" title="403" subTitle={t("auth.forbidden")} />;
+  }
 
   const onSave = () => {
     saveDevSettings({

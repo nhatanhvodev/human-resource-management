@@ -2,10 +2,11 @@ import { Button, DatePicker, Form, Input, Select, message } from "antd";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 
 type Employee = { id: string; employeeNo: string; fullName: string };
-type Application = { id: string; candidateName?: string; jobTitle?: string; status: string };
+type Application = { id: string; applicationNo?: string; candidateName?: string; jobTitle?: string; status: string };
 
 type Props = {
   open: boolean;
@@ -59,7 +60,7 @@ export default function InterviewScheduler({ open, applications, onClose, onSave
             placeholder={t("pages.recruitment.chooseApplication")}
             options={applications.map(a => ({
               value: a.id,
-              label: `${a.candidateName ?? a.id.slice(0, 8)} - ${a.jobTitle ?? t("pages.recruitment.unknown")}`
+              label: `${a.candidateName ?? a.applicationNo ?? "-"} - ${a.jobTitle ?? t("pages.recruitment.unknown")}`
             }))}
           />
         </Form.Item>

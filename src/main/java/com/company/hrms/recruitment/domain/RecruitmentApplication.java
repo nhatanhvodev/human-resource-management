@@ -21,6 +21,9 @@ public class RecruitmentApplication extends AuditableEntity {
     @Column(name = "tenant_id", nullable = false, length = 64)
     private String tenantId;
 
+    @Column(name = "application_no", nullable = false, length = 32)
+    private String applicationNo;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "candidate_id", nullable = false)
     private Candidate candidate;
@@ -36,9 +39,10 @@ public class RecruitmentApplication extends AuditableEntity {
     protected RecruitmentApplication() {
     }
 
-    public RecruitmentApplication(UUID id, String tenantId, Candidate candidate, JobPosting jobPosting, ApplicationStatus status) {
+    public RecruitmentApplication(UUID id, String tenantId, String applicationNo, Candidate candidate, JobPosting jobPosting, ApplicationStatus status) {
         this.id = id;
         this.tenantId = tenantId;
+        this.applicationNo = applicationNo;
         this.candidate = candidate;
         this.jobPosting = jobPosting;
         this.status = status;
@@ -50,6 +54,10 @@ public class RecruitmentApplication extends AuditableEntity {
 
     public String getTenantId() {
         return tenantId;
+    }
+
+    public String getApplicationNo() {
+        return applicationNo;
     }
 
     public Candidate getCandidate() {

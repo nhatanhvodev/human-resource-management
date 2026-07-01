@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -42,7 +43,7 @@ export default function AssetsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<PageResponse<Asset>>("/assets", { params: { page: 0, size: 50 } });
+      const res = await apiClient.get<PageResponse<Asset>>(API.ASSETS, { params: { page: 0, size: 50 } });
       setAssets(res.data.items ?? []);
     } catch {
       setError(t("pages.assets.loadError"));
@@ -51,7 +52,7 @@ export default function AssetsPage() {
 
   const loadEmployees = useCallback(async () => {
     try {
-      const res = await apiClient.get<PageResponse<Employee>>("/employees", { params: { page: 0, size: 100, status: "ACTIVE" } });
+      const res = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 100, status: "ACTIVE" } });
       setEmployees(res.data.items ?? []);
     } catch { setEmployees([]); }
   }, []);
@@ -63,7 +64,7 @@ export default function AssetsPage() {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post("/assets", values);
+      await apiClient.post(API.ASSETS, values);
       form.resetFields();
       setOpenCreate(false);
       await loadAssets();
@@ -75,7 +76,7 @@ export default function AssetsPage() {
     if (!selectedAssetId) return;
     setSaving(true);
     try {
-      await apiClient.post(`/assets/${selectedAssetId}/assign`, values);
+      await apiClient.post(`${API.ASSETS}/${selectedAssetId}/assign`, values);
       assignForm.resetFields();
       setOpenAssign(false);
       await loadAssets();
@@ -86,7 +87,7 @@ export default function AssetsPage() {
   const unassignAsset = async (id: string) => {
     setSaving(true);
     try {
-      await apiClient.post(`/assets/${id}/unassign`);
+      await apiClient.post(`${API.ASSETS}/${id}/unassign`);
       await loadAssets();
     } catch { setError(t("pages.assets.unassignError")); }
     finally { setSaving(false); }
@@ -95,7 +96,7 @@ export default function AssetsPage() {
   const deleteAsset = async (id: string) => {
     setSaving(true);
     try {
-      await apiClient.delete(`/assets/${id}`);
+      await apiClient.delete(`${API.ASSETS}/${id}`);
       await loadAssets();
     } catch { setError(t("pages.assets.deleteError")); }
     finally { setSaving(false); }
@@ -111,7 +112,7 @@ export default function AssetsPage() {
     },
     {
       title: t("pages.assets.assignTo"), dataIndex: "assignedTo", width: 120,
-      render: (v: string | null) => v ? employees.find(e => e.id === v)?.fullName ?? v.slice(0, 8) : "-"
+      render: (v: string | null) => v ? employees.find(e => e.id === v)?.fullName ?? "-" : "-"
     },
     {
       title: t("pages.assets.purchaseDate"), dataIndex: "purchaseDate", width: 110

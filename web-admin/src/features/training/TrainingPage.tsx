@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -40,7 +41,7 @@ export default function TrainingPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<PageResponse<Course>>("/training/courses", { params: { page: 0, size: 50 } });
+      const res = await apiClient.get<PageResponse<Course>>(API.TRAINING.COURSES, { params: { page: 0, size: 50 } });
       setCourses(res.data.items ?? []);
     } catch {
       setError(t("pages.training.loadError"));
@@ -49,7 +50,7 @@ export default function TrainingPage() {
 
   const loadEmployees = useCallback(async () => {
     try {
-      const res = await apiClient.get<PageResponse<Employee>>("/employees", { params: { page: 0, size: 100, status: "ACTIVE" } });
+      const res = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 100, status: "ACTIVE" } });
       setEmployees(res.data.items ?? []);
     } catch { setEmployees([]); }
   }, []);
@@ -61,7 +62,7 @@ export default function TrainingPage() {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post("/training/courses", values);
+      await apiClient.post(API.TRAINING.COURSES, values);
       form.resetFields();
       setOpenCreate(false);
       await loadCourses();
@@ -73,7 +74,7 @@ export default function TrainingPage() {
     if (!selectedCourseId) return;
     setSaving(true);
     try {
-      await apiClient.post("/training/enroll", { courseId: selectedCourseId, employeeId: values.employeeId });
+      await apiClient.post(API.TRAINING.ENROLL, { courseId: selectedCourseId, employeeId: values.employeeId });
       enrollForm.resetFields();
       setOpenEnroll(false);
     } catch { setError(t("pages.training.enrollError")); }

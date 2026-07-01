@@ -76,9 +76,19 @@ public class DepartmentService {
                 .filter(e -> e.getDepartment() != null && dept.getId().equals(e.getDepartment().getId()))
                 .toList();
             List<DepartmentTreeNode.EmployeeNode> employeeNodes = members.stream()
-                .map(e -> new DepartmentTreeNode.EmployeeNode(e.getId(), e.getFullName(), e.getEmployeeNo()))
+                .map(e -> new DepartmentTreeNode.EmployeeNode(
+                    e.getId(),
+                    e.getFullName(),
+                    e.getEmployeeNo(),
+                    e.getPosition() != null ? e.getPosition().getTitle() : null,
+                    isDepartmentManager(e)
+                ))
                 .toList();
-            return new DepartmentTreeNode(dept.getId(), dept.getCode(), dept.getName(), employeeNodes);
+            DepartmentTreeNode.EmployeeNode manager = employeeNodes.stream()
+                .filter(DepartmentTreeNode.EmployeeNode::manager)
+                .findFirst()
+                .orElse(null);
+            return new DepartmentTreeNode(dept.getId(), dept.getCode(), dept.getName(), manager, employeeNodes);
         }).toList();
     }
 
@@ -92,7 +102,16 @@ public class DepartmentService {
         departmentRepository.delete(department);
     }
 
-    public record DepartmentTreeNode(UUID id, String code, String name, List<DepartmentTreeNode.EmployeeNode> employees) {
-        public record EmployeeNode(UUID id, String fullName, String employeeNo) {}
+    private static boolean isDepartmentManager(Employee employee) {
+        String title = employee.getPosition() != null ? employee.getPosition().getTitle() : "";
+        return title != null && (
+            title.toLowerCase().contains("manager")
+                || title.toLowerCase().contains("trưởng phòng")
+                || title.toLowerCase().contains("giám đốc")
+        );
+    }
+
+    public record DepartmentTreeNode(UUID id, String code, String name, EmployeeNode manager, List<DepartmentTreeNode.EmployeeNode> employees) {
+        public record EmployeeNode(UUID id, String fullName, String employeeNo, String positionTitle, boolean manager) {}
     }
 }

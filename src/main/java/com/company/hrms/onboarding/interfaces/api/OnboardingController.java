@@ -27,7 +27,7 @@ public class OnboardingController {
     }
 
     @GetMapping("/tasks/{employeeId}")
-    @PreAuthorize("hasAuthority('onboarding:read')")
+    @PreAuthorize("hasAuthority('onboarding:read') or hasAuthority('self:access')")
     public List<TaskResponse> getTasks(@PathVariable UUID employeeId) {
         return service.getTasks(employeeId).stream()
             .map(OnboardingController::toTaskResponse).toList();

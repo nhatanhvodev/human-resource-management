@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 
 type AuditLog = {
   id: string;
   actorId: string;
+  actorName?: string;
   action: string;
   entityType: string;
   entityId: string;
@@ -29,7 +31,7 @@ export default function AuditLogPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<PageResponse<AuditLog>>("/audit-logs", { params: { page: 0, size: 100 } });
+      const res = await apiClient.get<PageResponse<AuditLog>>(API.AUDIT_LOGS, { params: { page: 0, size: 100 } });
       setItems(res.data.items ?? []);
     } catch {
       setError(t("pages.audit.loadError"));
@@ -45,8 +47,8 @@ export default function AuditLogPage() {
       render: (v: string) => <strong>{v}</strong>
     },
     { title: t("pages.audit.entity"), dataIndex: "entityType", width: 140 },
-    { title: t("pages.audit.entityId"), dataIndex: "entityId", width: 120, render: (v: string) => v ? v.slice(0, 8) : "-" },
-    { title: t("pages.audit.actor"), dataIndex: "actorId", width: 120, render: (v: string) => v ? v.slice(0, 8) : "-" },
+    { title: t("pages.audit.entityId"), dataIndex: "entityId", width: 120, render: (v: string) => v || "-" },
+    { title: t("pages.audit.actor"), dataIndex: "actorName", width: 180, render: (v: string) => v || "-" },
     { title: "IP", dataIndex: "ipAddress", width: 130 }
   ], [t]);
 
@@ -67,11 +69,11 @@ export default function AuditLogPage() {
         onClose={() => setSelected(null)}>
         {selected && (
           <Descriptions bordered column={1} size="middle">
-            <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
+            <Descriptions.Item label="ID">-</Descriptions.Item>
             <Descriptions.Item label={t("pages.audit.action")}>{selected.action}</Descriptions.Item>
             <Descriptions.Item label={t("pages.audit.entity")}>{selected.entityType ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label={t("pages.audit.entityId")}>{selected.entityId ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label={t("pages.audit.actor")}>{selected.actorId ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label={t("pages.audit.entityId")}>-</Descriptions.Item>
+            <Descriptions.Item label={t("pages.audit.actor")}>{selected.actorName ?? selected.actorId ?? "-"}</Descriptions.Item>
             <Descriptions.Item label={t("pages.audit.ipAddress")}>{selected.ipAddress ?? "-"}</Descriptions.Item>
             <Descriptions.Item label={t("pages.audit.time")}>{selected.createdAt}</Descriptions.Item>
             <Descriptions.Item label={t("common.detail")}>{selected.details ?? "-"}</Descriptions.Item>

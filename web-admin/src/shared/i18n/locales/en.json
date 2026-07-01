@@ -52,7 +52,8 @@
     "description": "Description",
     "notAvailable": "-",
     "submit": "Submit",
-    "upload": "Upload"
+    "upload": "Upload",
+    "download": "Download"
   },
   "app": {
     "adminBrand": "HR Administration",
@@ -69,7 +70,19 @@
     "managerWorkspace": "Manager Workspace"
   },
   "auth": {
-    "forbidden": "You do not have permission to access this feature."
+    "forbidden": "You do not have permission to access this feature.",
+    "logout": "Log out",
+    "login": {
+      "eyebrow": "HRMS",
+      "title": "Sign in",
+      "subtitle": "Choose a demo account or enter a username and password to test the correct role.",
+      "tenant": "Tenant ID",
+      "username": "Username",
+      "password": "Password",
+      "submit": "Sign in",
+      "error": "Invalid username or password.",
+      "demoAccounts": "Demo accounts"
+    }
   },
   "table": {
     "emptyTitle": "No data",
@@ -179,7 +192,9 @@
       "company": "Company",
       "drawerTitle": "Department: {{name}}",
       "codeShort": "Code",
-      "employeeCount": "Employee count"
+      "employeeCount": "Employee count",
+      "manager": "Department manager",
+      "noManager": "No manager assigned"
     },
     "employees": {
       "title": "Employees",

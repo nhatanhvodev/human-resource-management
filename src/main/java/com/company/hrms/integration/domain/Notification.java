@@ -28,11 +28,29 @@ public class Notification extends AuditableEntity {
     @Column(name = "is_read", nullable = false)
     private boolean isRead;
 
+    @Column(name = "creator_id")
+    private UUID creatorId;
+
+    @Column(name = "creator_name", length = 255)
+    private String creatorName;
+
+    @Column(name = "detail", columnDefinition = "TEXT")
+    private String detail;
+
+    @Column(name = "file_url", length = 500)
+    private String fileUrl;
+
+    @Column(name = "file_name", length = 255)
+    private String fileName;
+
     protected Notification() {}
 
-    public Notification(UUID id, String tenantId, UUID recipientId, String title, String body, String type) {
+    public Notification(UUID id, String tenantId, UUID recipientId, String title, String body, String type,
+                        UUID creatorId, String creatorName, String detail, String fileUrl, String fileName) {
         this.id = id; this.tenantId = tenantId; this.recipientId = recipientId;
         this.title = title; this.body = body; this.type = type;
+        this.creatorId = creatorId; this.creatorName = creatorName;
+        this.detail = detail; this.fileUrl = fileUrl; this.fileName = fileName;
         this.isRead = false;
     }
 
@@ -43,4 +61,9 @@ public class Notification extends AuditableEntity {
     public String getType() { return type; }
     public boolean isRead() { return isRead; }
     public void markRead() { this.isRead = true; }
+    public UUID getCreatorId() { return creatorId; }
+    public String getCreatorName() { return creatorName; }
+    public String getDetail() { return detail; }
+    public String getFileUrl() { return fileUrl; }
+    public String getFileName() { return fileName; }
 }

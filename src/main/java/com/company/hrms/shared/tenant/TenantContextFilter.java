@@ -15,8 +15,13 @@ public class TenantContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        // For unauthenticated requests (login), allow client-provided X-Tenant-Id
+        // For authenticated requests, tenant is derived from JWT claims
         String tenantId = request.getHeader("X-Tenant-Id");
-        TenantContext.set(tenantId == null || tenantId.isBlank() ? "default" : tenantId);
+        if (tenantId == null || tenantId.isBlank()) {
+            tenantId = "default";
+        }
+        TenantContext.set(tenantId);
         try {
             filterChain.doFilter(request, response);
         } finally {

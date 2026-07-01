@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -42,7 +43,7 @@ export default function DepartmentsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<PageResponse<Department>>("/departments", {
+      const response = await apiClient.get<PageResponse<Department>>(API.DEPARTMENTS, {
         params: { page, size: pageSize, q: keyword || undefined }
       });
       setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
@@ -66,9 +67,9 @@ export default function DepartmentsPage() {
         name: values.name.trim()
       };
       if (editingDepartment) {
-        await apiClient.put(`/departments/${editingDepartment.id}`, payload);
+        await apiClient.put(`${API.DEPARTMENTS}/${editingDepartment.id}`, payload);
       } else {
-        await apiClient.post("/departments", payload);
+        await apiClient.post(API.DEPARTMENTS, payload);
       }
       form.resetFields();
       setOpenCreate(false);
@@ -101,7 +102,7 @@ export default function DepartmentsPage() {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.delete(`/departments/${department.id}`);
+      await apiClient.delete(`${API.DEPARTMENTS}/${department.id}`);
       await loadDepartments();
     } catch {
       setError(t("pages.departments.deleteError"));

@@ -14,11 +14,13 @@ import { Card, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { StatusTag } from "../../shared/ui/StatusTag";
 
 type Application = {
   id: string;
+  applicationNo?: string;
   candidateName?: string;
   jobTitle?: string;
   status: string;
@@ -65,7 +67,7 @@ function KanbanCard({ app }: { app: Application }) {
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} style={{ ...style, marginBottom: 8, cursor: "grab" }}>
       <Card size="small" hoverable>
-        <div style={{ fontWeight: 500, fontSize: 13 }}>{app.candidateName ?? app.id.slice(0, 8)}</div>
+        <div style={{ fontWeight: 500, fontSize: 13 }}>{app.candidateName ?? app.applicationNo ?? "-"}</div>
         <div style={{ fontSize: 12, color: "#888" }}>{app.jobTitle ?? "-"}</div>
         <div style={{ marginTop: 4 }}><StatusTag value={app.status} /></div>
       </Card>

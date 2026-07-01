@@ -73,7 +73,7 @@ export function getToken(): string {
 }
 
 export function getJwtPayload(token = getToken()): JwtPayload | null {
-  if (!token || token === LOCAL_DEV_TOKEN) {
+  if (!token || (import.meta.env.DEV && token === LOCAL_DEV_TOKEN)) {
     return null;
   }
 
@@ -89,7 +89,7 @@ export function getJwtPayload(token = getToken()): JwtPayload | null {
 }
 
 export function getAuthorities(token = getToken()): string[] {
-  if (token === LOCAL_DEV_TOKEN) {
+  if (import.meta.env.DEV && token === LOCAL_DEV_TOKEN) {
     return [...ADMIN_AUTHORITIES];
   }
 
@@ -109,8 +109,8 @@ export function hasAuthority(authority: string, token = getToken()): boolean {
 
 export function getEmployeeId(): string {
   const token = getToken();
-  if (token === LOCAL_DEV_TOKEN) {
-    return "b1000000-0000-4000-8000-000000000001";
+  if (import.meta.env.DEV && token === LOCAL_DEV_TOKEN) {
+    return "";
   }
 
   const payload = getJwtPayload(token);

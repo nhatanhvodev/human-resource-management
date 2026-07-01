@@ -4,6 +4,7 @@ import com.company.hrms.integration.domain.Announcement;
 import com.company.hrms.integration.domain.AnnouncementPriority;
 import com.company.hrms.integration.infrastructure.AnnouncementRepository;
 import com.company.hrms.shared.exception.NotFoundException;
+import com.company.hrms.shared.security.SecurityUtils;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +22,8 @@ public class AnnouncementService {
     public AnnouncementService(AnnouncementRepository repository) { this.repository = repository; }
 
     @Transactional
-    public Announcement create(UUID authorId, String title, String content, Instant publishAt, Instant expireAt, String priority) {
+    public Announcement create(String title, String content, Instant publishAt, Instant expireAt, String priority) {
+        UUID authorId = SecurityUtils.getCurrentEmployeeId();
         return repository.save(new Announcement(UUID.randomUUID(), TenantContext.get(), authorId,
             title, content, publishAt, expireAt, AnnouncementPriority.valueOf(priority)));
     }

@@ -42,7 +42,7 @@ export default function MyOnboardingPage() {
 
   return (
     <div>
-      <div className="page-header"><Title level={3}>Onboarding</Title></div>
+      <div className="page-header"><Title level={3}>{t('nav.onboarding')}</Title></div>
       <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
     </div>
   );

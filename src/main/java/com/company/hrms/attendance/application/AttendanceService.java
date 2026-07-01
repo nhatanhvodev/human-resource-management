@@ -51,7 +51,10 @@ public class AttendanceService {
             UUID.randomUUID(), TenantContext.get(), employeeId, fromDate, toDate,
             leaveType, reason, LeaveStatus.PENDING
         );
-        return leaveRequestRepository.save(leaveRequest);
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+        long days = toDate.toEpochDay() - fromDate.toEpochDay() + 1;
+        updateLeaveBalance(employeeId, leaveType, fromDate.getYear(), days, true, false);
+        return saved;
     }
 
     @Transactional
@@ -63,6 +66,9 @@ public class AttendanceService {
         }
         leaveRequest.approve();
         leaveRequest.setApprovedBy(currentEmployeeId);
+        long days = leaveRequest.getToDate().toEpochDay() - leaveRequest.getFromDate().toEpochDay() + 1;
+        updateLeaveBalance(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType(),
+            leaveRequest.getFromDate().getYear(), days, false, true);
         return leaveRequest;
     }
 
@@ -70,6 +76,9 @@ public class AttendanceService {
     public LeaveRequest reject(UUID leaveId) {
         LeaveRequest leaveRequest = findLeaveByIdScoped(leaveId);
         leaveRequest.reject();
+        long days = leaveRequest.getToDate().toEpochDay() - leaveRequest.getFromDate().toEpochDay() + 1;
+        updateLeaveBalance(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType(),
+            leaveRequest.getFromDate().getYear(), days, false, false);
         return leaveRequest;
     }
 
@@ -81,6 +90,11 @@ public class AttendanceService {
             return leaveRequestRepository.findAllByTenantId(tenantId, pageable);
         }
         return leaveRequestRepository.findByTenantIdAndStatus(tenantId, parseLeaveStatus(normalizedStatus), pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<LeaveRequest> listByEmployee(UUID employeeId, Pageable pageable) {
+        return leaveRequestRepository.findByTenantIdAndEmployeeId(TenantContext.get(), employeeId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +160,27 @@ public class AttendanceService {
             return LeaveStatus.valueOf(status.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("INVALID_LEAVE_STATUS");
+        }
+    }
+
+    private void updateLeaveBalance(UUID employeeId, LeaveType leaveType, int year,
+                                     long days, boolean addPending, boolean moveToUsed) {
+        String tenantId = TenantContext.get();
+        LeaveBalance balance = leaveBalanceRepository
+            .findByTenantIdAndEmployeeIdAndLeaveTypeAndYear(tenantId, employeeId, leaveType, year)
+            .orElseGet(() -> {
+                LeaveBalance newBalance = new LeaveBalance(
+                    UUID.randomUUID(), tenantId, employeeId, leaveType,
+                    year, (int) days, 0, 0);
+                return leaveBalanceRepository.save(newBalance);
+            });
+        if (addPending) {
+            balance.addPendingDays(days);
+        } else {
+            balance.reducePendingDays(days);
+        }
+        if (moveToUsed) {
+            balance.addUsedDays(days);
         }
     }
 }

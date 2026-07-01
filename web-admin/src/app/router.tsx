@@ -14,7 +14,6 @@ import PayrollPage from "../features/payroll/PayrollPage";
 import PerformancePage from "../features/performance/PerformancePage";
 import RecruitmentPage from "../features/recruitment/RecruitmentPage";
 import DevSettingsPage from "../features/settings/DevSettingsPage";
-import AttendancePage from "../features/attendance/AttendancePage";
 import DocumentsPage from "../features/documents/DocumentsPage";
 import OnboardingPage from "../features/onboarding/OnboardingPage";
 import TrainingPage from "../features/training/TrainingPage";
@@ -23,13 +22,13 @@ import AssetsPage from "../features/assets/AssetsPage";
 import AnnouncementsPage from "../features/announcements/AnnouncementsPage";
 import AuditLogPage from "../features/audit/AuditLogPage";
 import AuthorizationPage from "../features/authorization/AuthorizationPage";
-import { hasAuthority } from "../shared/auth/jwt";
+import { useAccess } from "../shared/auth/access";
+import LoginPage from "../features/auth/LoginPage";
 
 const EssDashboardPage = lazy(() => import("../features/ess/EssDashboardPage"));
 const MyProfilePage = lazy(() => import("../features/ess/MyProfilePage"));
 const MyPayslipsPage = lazy(() => import("../features/ess/MyPayslipsPage"));
 const MyLeavePage = lazy(() => import("../features/ess/MyLeavePage"));
-const MyAttendancePage = lazy(() => import("../features/ess/MyAttendancePage"));
 const MyDocumentsPage = lazy(() => import("../features/ess/MyDocumentsPage"));
 const MyOnboardingPage = lazy(() => import("../features/ess/MyOnboardingPage"));
 const MyTrainingPage = lazy(() => import("../features/ess/MyTrainingPage"));
@@ -40,7 +39,11 @@ const Lazy = ({ children }: { children: React.ReactNode }) => (
 
 const RequireAuthority = ({ authority, children }: { authority: string; children: React.ReactNode }) => {
   const { t } = useTranslation();
-  if (!hasAuthority(authority)) {
+  const access = useAccess();
+  if (access.loading) {
+    return <Spin style={{ display: "block", margin: "40px auto" }} />;
+  }
+  if (!access.hasAuthority(authority)) {
     return <Result status="403" title="403" subTitle={t("auth.forbidden")} />;
   }
 
@@ -48,6 +51,11 @@ const RequireAuthority = ({ authority, children }: { authority: string; children
 };
 
 export const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />,
+    errorElement: <ErrorPage />
+  },
   {
     path: "/",
     element: <RoleShell />,
@@ -61,7 +69,6 @@ export const router = createBrowserRouter([
       { path: "leave", element: <RequireAuthority authority="leave:read"><LeavePage /></RequireAuthority> },
       { path: "payroll", element: <RequireAuthority authority="payroll:read"><PayrollPage /></RequireAuthority> },
       { path: "performance", element: <RequireAuthority authority="performance:read"><PerformancePage /></RequireAuthority> },
-      { path: "attendance", element: <RequireAuthority authority="attendance:read"><AttendancePage /></RequireAuthority> },
       { path: "documents", element: <RequireAuthority authority="document:read"><DocumentsPage /></RequireAuthority> },
       { path: "onboarding", element: <RequireAuthority authority="onboarding:read"><OnboardingPage /></RequireAuthority> },
       { path: "training", element: <RequireAuthority authority="training:read"><TrainingPage /></RequireAuthority> },
@@ -70,7 +77,7 @@ export const router = createBrowserRouter([
       { path: "announcements", element: <RequireAuthority authority="announcement:read"><AnnouncementsPage /></RequireAuthority> },
       { path: "audit", element: <RequireAuthority authority="audit:read"><AuditLogPage /></RequireAuthority> },
       { path: "authorization", element: <RequireAuthority authority="authz:read"><AuthorizationPage /></RequireAuthority> },
-      { path: "settings", element: <DevSettingsPage /> }
+      { path: "settings", element: <RequireAuthority authority="authz:update"><DevSettingsPage /></RequireAuthority> }
     ]
   },
   {
@@ -82,7 +89,6 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <RequireAuthority authority="dashboard:read"><DashboardPage /></RequireAuthority> },
       { path: "employees", element: <RequireAuthority authority="employee:read"><EmployeesPage /></RequireAuthority> },
       { path: "leave", element: <RequireAuthority authority="leave:read"><LeavePage /></RequireAuthority> },
-      { path: "attendance", element: <RequireAuthority authority="attendance:read"><AttendancePage /></RequireAuthority> },
       { path: "documents", element: <RequireAuthority authority="document:read"><DocumentsPage /></RequireAuthority> },
       { path: "training", element: <RequireAuthority authority="training:read"><TrainingPage /></RequireAuthority> },
       { path: "announcements", element: <RequireAuthority authority="announcement:read"><AnnouncementsPage /></RequireAuthority> },
@@ -98,7 +104,6 @@ export const router = createBrowserRouter([
       { path: "profile", element: <Lazy><MyProfilePage /></Lazy> },
       { path: "payslips", element: <Lazy><MyPayslipsPage /></Lazy> },
       { path: "leave", element: <Lazy><MyLeavePage /></Lazy> },
-      { path: "attendance", element: <Lazy><MyAttendancePage /></Lazy> },
       { path: "documents", element: <Lazy><MyDocumentsPage /></Lazy> },
       { path: "onboarding", element: <Lazy><MyOnboardingPage /></Lazy> },
       { path: "training", element: <Lazy><MyTrainingPage /></Lazy> }

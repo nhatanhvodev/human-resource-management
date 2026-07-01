@@ -8,8 +8,8 @@ import { getEmployeeId } from '../../shared/auth/jwt';
 const { Title } = Typography;
 
 type Payslip = {
-  id: string; periodName: string; grossPay: number;
-  netPay: number; status: string; createdAt: string;
+  id: string; basicSalary: number; allowance: number;
+  deduction: number; overtimePay: number; netPay: number; issuedAt: string;
 };
 
 export default function MyPayslipsPage() {
@@ -22,7 +22,7 @@ export default function MyPayslipsPage() {
     (async () => {
       try {
         const empId = getEmployeeId();
-        const res = await apiClient.get<Payslip[]>('/payslips/mine', {
+        const res = await apiClient.get<Payslip[]>('/self/payslips', {
           headers: { 'X-Employee-Id': empId }
         });
         if (mounted) setData(Array.isArray(res.data) ? res.data : []);
@@ -32,11 +32,11 @@ export default function MyPayslipsPage() {
   }, []);
 
   const cols: ColumnsType<Payslip> = [
-    { title: t('ess.period'), dataIndex: 'periodName' },
-    { title: t('ess.grossPay'), dataIndex: 'grossPay', render: (v: number) => v?.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN') },
+    { title: t('ess.period'), dataIndex: 'issuedAt', render: (v: string) => v ? new Date(v).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'vi-VN', { month: '2-digit', year: 'numeric' }) : '-' },
+    { title: t('ess.grossPay'), render: (_, row) => (Number(row.basicSalary ?? 0) + Number(row.allowance ?? 0) + Number(row.overtimePay ?? 0)).toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN') },
     { title: t('ess.netPay'), dataIndex: 'netPay', render: (v: number) => v?.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN') },
-    { title: t('common.status'), dataIndex: 'status' },
-    { title: t('ess.createdAt'), dataIndex: 'createdAt' }
+    { title: t('pages.payroll.deduction'), dataIndex: 'deduction', render: (v: number) => v?.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN') },
+    { title: t('ess.createdAt'), dataIndex: 'issuedAt', render: (v: string) => v ? new Date(v).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'vi-VN') : '-' }
   ];
 
   return (

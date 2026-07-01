@@ -1,0 +1,13 @@
+target/
+node_modules/
+.git/
+.tmp/
+.worktrees/
+.tools/
+.codegraph/
+.DS_Store
+*.md
+.gitignore
+.env
+.env.local
+*.log

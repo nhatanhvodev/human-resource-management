@@ -13,7 +13,9 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -59,27 +62,52 @@ public class RecruitmentController {
         return new CandidateResponse(candidate.getId(), candidate.getFullName());
     }
 
+    @DeleteMapping("/candidates/{id}")
+    @PreAuthorize("hasAuthority('recruitment:delete')")
+    public void deleteCandidate(@PathVariable UUID id) {
+        recruitmentService.deleteCandidate(id);
+    }
+
     @GetMapping("/job-postings")
     @PreAuthorize("hasAuthority('recruitment:read')")
     public PageResponse<JobPostingResponse> listJobPostings(Pageable pageable) {
         return PageResponse.from(
             recruitmentService.listJobPostings(pageable)
-                .map(jobPosting -> new JobPostingResponse(jobPosting.getId(), jobPosting.getTitle()))
+                .map(this::toJobPostingResponse)
         );
     }
 
     @PostMapping("/job-postings")
     @PreAuthorize("hasAuthority('recruitment:create')")
     public JobPostingResponse createJobPosting(@Valid @RequestBody CreateJobPostingRequest request) {
-        JobPosting jobPosting = recruitmentService.createJobPosting(request.title());
-        return new JobPostingResponse(jobPosting.getId(), jobPosting.getTitle());
+        JobPosting jobPosting = recruitmentService.createJobPosting(
+            request.title(), request.description(), request.departmentId(),
+            request.salaryRangeMin(), request.salaryRangeMax(),
+            request.requirements(), request.location(), request.headcount());
+        return toJobPostingResponse(jobPosting);
     }
 
     @PutMapping("/job-postings/{id}")
     @PreAuthorize("hasAuthority('recruitment:update')")
     public JobPostingResponse updateJobPosting(@PathVariable UUID id, @Valid @RequestBody CreateJobPostingRequest request) {
-        JobPosting jobPosting = recruitmentService.updateJobPosting(id, request.title());
-        return new JobPostingResponse(jobPosting.getId(), jobPosting.getTitle());
+        JobPosting jobPosting = recruitmentService.updateJobPosting(id,
+            request.title(), request.description(), request.departmentId(),
+            request.salaryRangeMin(), request.salaryRangeMax(),
+            request.requirements(), request.location(), request.headcount());
+        return toJobPostingResponse(jobPosting);
+    }
+
+    @DeleteMapping("/job-postings/{id}")
+    @PreAuthorize("hasAuthority('recruitment:delete')")
+    public void deleteJobPosting(@PathVariable UUID id) {
+        recruitmentService.deleteJobPosting(id);
+    }
+
+    @PatchMapping("/job-postings/{id}/status")
+    @PreAuthorize("hasAuthority('recruitment:update')")
+    public JobPostingResponse changeJobPostingStatus(@PathVariable UUID id, @RequestParam String status) {
+        JobPosting jobPosting = recruitmentService.changeJobPostingStatus(id, status);
+        return toJobPostingResponse(jobPosting);
     }
 
     @GetMapping("/applications")
@@ -87,7 +115,7 @@ public class RecruitmentController {
     public PageResponse<ApplicationResponse> listApplications(@RequestParam(required = false) String status, Pageable pageable) {
         return PageResponse.from(
             recruitmentService.listApplications(status, pageable)
-                .map(application -> new ApplicationResponse(application.getId(), application.getStatus().name()))
+                .map(this::toApplicationResponse)
         );
     }
 
@@ -99,7 +127,7 @@ public class RecruitmentController {
             request.jobPostingId(),
             ApplicationStatus.valueOf(request.status())
         );
-        return new ApplicationResponse(application.getId(), application.getStatus().name());
+        return toApplicationResponse(application);
     }
 
     @PostMapping("/recruitment/applications/{applicationId}/convert")
@@ -116,7 +144,14 @@ public class RecruitmentController {
     public record CreateCandidateRequest(@NotBlank String fullName) {
     }
 
-    public record CreateJobPostingRequest(@NotBlank String title) {
+    public record CreateJobPostingRequest(@NotBlank String title,
+                                          String description,
+                                          UUID departmentId,
+                                          BigDecimal salaryRangeMin,
+                                          BigDecimal salaryRangeMax,
+                                          String requirements,
+                                          String location,
+                                          Integer headcount) {
     }
 
     public record CreateApplicationRequest(@NotNull UUID candidateId,
@@ -130,10 +165,13 @@ public class RecruitmentController {
     public record CandidateResponse(UUID id, String fullName) {
     }
 
-    public record JobPostingResponse(UUID id, String title) {
+    public record JobPostingResponse(UUID id, String title, String description,
+                                     UUID departmentId, String status,
+                                     BigDecimal salaryRangeMin, BigDecimal salaryRangeMax,
+                                     String requirements, String location, Integer headcount) {
     }
 
-    public record ApplicationResponse(UUID id, String status) {
+    public record ApplicationResponse(UUID id, String applicationNo, String candidateName, String jobTitle, String status) {
     }
 
     public record ConversionResponse(UUID employeeId, UUID applicationId, String applicationStatus) {
@@ -143,7 +181,32 @@ public class RecruitmentController {
     @PreAuthorize("hasAuthority('recruitment:update')")
     public ApplicationResponse moveStage(@PathVariable UUID id, @RequestParam String stage) {
         RecruitmentApplication application = recruitmentService.moveStage(id, stage);
-        return new ApplicationResponse(application.getId(), application.getStatus().name());
+        return toApplicationResponse(application);
+    }
+
+    private ApplicationResponse toApplicationResponse(RecruitmentApplication application) {
+        return new ApplicationResponse(
+            application.getId(),
+            application.getApplicationNo(),
+            application.getCandidate().getFullName(),
+            application.getJobPosting().getTitle(),
+            application.getStatus().name()
+        );
+    }
+
+    private JobPostingResponse toJobPostingResponse(JobPosting jp) {
+        return new JobPostingResponse(
+            jp.getId(),
+            jp.getTitle(),
+            jp.getDescription(),
+            jp.getDepartmentId(),
+            jp.getStatus().name(),
+            jp.getSalaryRangeMin(),
+            jp.getSalaryRangeMax(),
+            jp.getRequirements(),
+            jp.getLocation(),
+            jp.getHeadcount()
+        );
     }
 
     @PostMapping("/interviews")

@@ -1,16 +1,21 @@
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          public-key-location: classpath:keys/dev-public.pem
   datasource:
-    url: jdbc:postgresql://localhost:15432/hrms
+    url: jdbc:postgresql://${DEV_DB_HOST:localhost}:${DEV_DB_PORT:15432}/hrms
     driver-class-name: org.postgresql.Driver
-    username: hrms
-    password: hrms
+    username: ${SPRING_DATASOURCE_USERNAME:hrms}
+    password: ${SPRING_DATASOURCE_PASSWORD:hrms}
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
   rabbitmq:
-    host: localhost
-    port: 5672
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
 management:
   endpoints:
     web:

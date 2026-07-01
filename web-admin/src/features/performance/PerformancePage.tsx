@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { StatusTag } from "../../shared/ui/StatusTag";
@@ -56,7 +57,7 @@ export default function PerformancePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<PageResponse<AppraisalCycle>>("/performance/cycles", {
+      const res = await apiClient.get<PageResponse<AppraisalCycle>>(API.PERFORMANCE.CYCLES, {
         params: { page: 0, size: 20 }
       });
       setCycles(res.data.items ?? []);
@@ -75,8 +76,8 @@ export default function PerformancePage() {
     setLoadingReviews(true);
     try {
       const [revRes, kpiRes] = await Promise.all([
-        apiClient.get<PageResponse<PerformanceReview>>(`/performance/cycles/${cycle.id}/reviews`, { params: { page: 0, size: 200 } }),
-        apiClient.get<PageResponse<KPI>>(`/performance/cycles/${cycle.id}/kpis`, { params: { page: 0, size: 500 } })
+        apiClient.get<PageResponse<PerformanceReview>>(`${API.PERFORMANCE.CYCLES}/${cycle.id}/reviews`, { params: { page: 0, size: 200 } }),
+        apiClient.get<PageResponse<KPI>>(`${API.PERFORMANCE.CYCLES}/${cycle.id}/kpis`, { params: { page: 0, size: 500 } })
       ]);
       setReviews(revRes.data.items ?? []);
       setKpis(kpiRes.data.items ?? []);

@@ -1,7 +1,19 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DevSettingsPage from "./DevSettingsPage";
+
+vi.mock("../../shared/auth/access", () => ({
+  useAccess: () => ({
+    access: { userId: "test", username: "admin", displayName: "Admin", employeeId: "test", roles: ["ADMIN"], authorities: ["authz:update"] },
+    authorities: ["authz:update"],
+    roles: ["ADMIN"],
+    loading: false,
+    error: false,
+    hasAuthority: (a: string) => a === "authz:update",
+    reload: vi.fn()
+  })
+}));
 
 describe("DevSettingsPage", () => {
   beforeEach(() => {

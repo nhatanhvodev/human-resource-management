@@ -2,6 +2,7 @@ import { Button, Form, Input, InputNumber, Rate, message } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 
 type Props = {
   interviewId: string | null;

@@ -9,8 +9,10 @@ function unsignedJwt(payload: object) {
 
 describe("jwt auth helpers", () => {
   it("grants full admin authorities for the local dev token", () => {
+    localStorage.setItem("hrms.dev.token", LOCAL_DEV_TOKEN);
+
     expect(hasAuthority("audit:read", LOCAL_DEV_TOKEN)).toBe(true);
-    expect(getEmployeeId()).toBeTruthy();
+    expect(getEmployeeId()).toBe("");
   });
 
   it("reads authorities from JWT claims", () => {

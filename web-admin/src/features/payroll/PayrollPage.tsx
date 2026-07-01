@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -56,7 +57,7 @@ export default function PayrollPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<PageResponse<PayrollPeriod>>("/payroll-periods", {
+      const response = await apiClient.get<PageResponse<PayrollPeriod>>(API.PAYROLL_PERIODS, {
         params: { page: 0, size: 10 }
       });
       setPeriods(response.data.items ?? []);
@@ -75,7 +76,7 @@ export default function PayrollPage() {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post("/payroll-periods", values);
+      await apiClient.post(API.PAYROLL_PERIODS, values);
       form.resetFields();
       setOpenPeriod(false);
       await loadPeriods();
@@ -89,7 +90,7 @@ export default function PayrollPage() {
   const openRunsDrawer = async (periodId: string) => {
     setOpenRuns(true);
     try {
-      const response = await apiClient.get<PageResponse<PayrollRun>>("/payroll-runs", {
+      const response = await apiClient.get<PageResponse<PayrollRun>>(API.PAYROLL_RUNS, {
         params: { periodId, page: 0, size: 10 }
       });
       setRuns(response.data.items ?? []);
@@ -98,11 +99,11 @@ export default function PayrollPage() {
     }
   };
 
-  const openPayslipsDrawer = async (runId: string) => {
-    setCurrentRunId(runId);
+  const openPayslipsDrawer = async (runId: string, runLabel: string) => {
+    setCurrentRunId(runLabel);
     setOpenPayslips(true);
     try {
-      const response = await apiClient.get<Payslip[] | PageResponse<Payslip>>(`/payroll-runs/${runId}/payslips`, {
+      const response = await apiClient.get<Payslip[] | PageResponse<Payslip>>(`${API.PAYROLL_RUNS}/${runId}/payslips`, {
         params: { page: 0, size: 200 }
       });
       setPayslips(Array.isArray(response.data) ? response.data : response.data.items ?? []);
@@ -114,7 +115,7 @@ export default function PayrollPage() {
   const executePeriod = async (periodId: string) => {
     setError(null);
     try {
-      await apiClient.post(`/payroll-runs/${periodId}/execute`);
+      await apiClient.post(`${API.PAYROLL_RUNS}/${periodId}/execute`);
       await openRunsDrawer(periodId);
     } catch {
       setError(t("pages.payroll.executeError"));
@@ -124,7 +125,7 @@ export default function PayrollPage() {
   const closePeriod = async (periodId: string) => {
     setError(null);
     try {
-      await apiClient.post(`/payroll-periods/${periodId}/close`);
+      await apiClient.post(`${API.PAYROLL_PERIODS}/${periodId}/close`);
       await loadPeriods();
     } catch {
       setError(t("pages.payroll.closeError"));
@@ -138,7 +139,7 @@ export default function PayrollPage() {
       title: t("pages.payroll.period"),
       dataIndex: "id",
       render: (value: string, row) => (
-        row.periodFrom && row.periodTo ? `${row.periodFrom} - ${row.periodTo}` : value.slice(0, 8)
+        row.periodFrom && row.periodTo ? `${row.periodFrom} - ${row.periodTo}` : "-"
       )
     },
     {
@@ -172,7 +173,7 @@ export default function PayrollPage() {
   ];
 
   const runColumns: ColumnsType<PayrollRun> = [
-    { title: t("pages.payroll.run"), dataIndex: "id" },
+    { title: t("pages.payroll.run"), dataIndex: "id", render: (_: string, __, index) => `RUN${String(index + 1).padStart(4, "0")}` },
     {
       title: t("common.status"),
       dataIndex: "status",
@@ -184,8 +185,8 @@ export default function PayrollPage() {
       title: t("common.actions"),
       key: "actions",
       width: 120,
-      render: (_, row) => (
-        <Button size="small" onClick={() => void openPayslipsDrawer(row.id)}>
+      render: (_, row, index) => (
+        <Button size="small" onClick={() => void openPayslipsDrawer(row.id, `RUN${String(index + 1).padStart(4, "0")}`)}>
           {t("pages.payroll.payslips")}
         </Button>
       )
@@ -193,7 +194,7 @@ export default function PayrollPage() {
   ];
 
   const payslipColumns: ColumnsType<Payslip> = [
-    { title: t("pages.payroll.payslipId"), dataIndex: "id", render: (v: string) => v.slice(0, 8) },
+    { title: t("pages.payroll.payslipId"), dataIndex: "id", render: (_: string, __, index) => `PS${String(index + 1).padStart(4, "0")}` },
     { title: t("pages.payroll.basicSalary"), dataIndex: "basicSalary", render: (v: number) => money(v) },
     { title: t("pages.payroll.allowance"), dataIndex: "allowance", render: (v: number) => money(v) },
     { title: t("pages.payroll.deduction"), dataIndex: "deduction", render: (v: number) => money(v) },
@@ -240,7 +241,7 @@ export default function PayrollPage() {
       </Drawer>
 
       <Drawer
-        title={t("pages.payroll.payslipsForRun", { runId: currentRunId.slice(0, 8) })}
+        title={t("pages.payroll.payslipsForRun", { runId: currentRunId })}
         width="min(800px, calc(100vw - 32px))"
         open={openPayslips}
         onClose={() => { setOpenPayslips(false); setPayslips([]); }}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 
 type DashboardSummary = {
   totalEmployees: number;
@@ -54,10 +55,10 @@ export default function DashboardPage() {
       setError(null);
       try {
         const [summaryR, activityR, headcountR, distR] = await Promise.all([
-          apiClient.get<DashboardSummary>("/dashboard/summary"),
-          apiClient.get<DashboardActivity[]>("/dashboard/activities"),
-          apiClient.get<DepartmentHeadcount[]>("/dashboard/headcount-by-department"),
-          apiClient.get<DepartmentDistribution[]>("/dashboard/department-distribution")
+          apiClient.get<DashboardSummary>(API.DASHBOARD.SUMMARY),
+          apiClient.get<DashboardActivity[]>(API.DASHBOARD.ACTIVITIES),
+          apiClient.get<DepartmentHeadcount[]>(API.DASHBOARD.HEADCOUNT_BY_DEPT),
+          apiClient.get<DepartmentDistribution[]>(API.DASHBOARD.DEPT_DISTRIBUTION)
         ]);
         if (mounted) {
           setSummary({ ...defaultSummary, ...(summaryR.data ?? {}) });
@@ -99,11 +100,24 @@ export default function DashboardPage() {
 
   const barOption = {
     tooltip: { trigger: 'axis' as const },
-    xAxis: { type: 'category', data: headcounts.map(h => h.departmentName) },
-    yAxis: { type: 'value' },
+    grid: { left: 180, right: 24, top: 24, bottom: 40 },
+    xAxis: { type: 'value' },
+    yAxis: {
+      type: 'category',
+      data: headcounts.map(h => h.departmentName),
+      axisLabel: {
+        width: 160,
+        overflow: 'truncate'
+      }
+    },
+    dataZoom: headcounts.length > 9 ? [
+      { type: 'slider' as const, yAxisIndex: 0, right: 0, width: 14, start: 0, end: Math.min(100, 900 / headcounts.length) },
+      { type: 'inside' as const, yAxisIndex: 0 }
+    ] : undefined,
     series: [{
       type: 'bar', data: headcounts.map(h => h.count),
-      itemStyle: { color: '#1677ff', borderRadius: [4, 4, 0, 0] }
+      label: { show: true, position: 'right' as const },
+      itemStyle: { color: '#1677ff', borderRadius: [0, 4, 4, 0] }
     }]
   };
 

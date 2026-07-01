@@ -59,4 +59,16 @@ public class LeaveBalance extends AuditableEntity {
     public int getTotalDays() { return totalDays; }
     public int getUsedDays() { return usedDays; }
     public int getPendingDays() { return pendingDays; }
+
+    public void addPendingDays(long days) {
+        this.pendingDays += (int) days;
+    }
+
+    public void reducePendingDays(long days) {
+        this.pendingDays -= (int) days;
+    }
+
+    public void addUsedDays(long days) {
+        this.usedDays += (int) days;
+    }
 }

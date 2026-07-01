@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
+import { API } from "../../shared/api/endpoints";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { StatusTag } from "../../shared/ui/StatusTag";
@@ -18,6 +19,8 @@ type TimeEntry = {
   status: string;
 };
 
+type Employee = { id: string; employeeNo: string; fullName: string };
+
 export default function AttendancePage() {
   const { t } = useTranslation();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -25,13 +28,14 @@ export default function AttendancePage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const status = activeTab === "all" ? undefined : activeTab.toUpperCase();
-      const response = await apiClient.get<PageResponse<TimeEntry>>("/time-entries", {
+      const response = await apiClient.get<PageResponse<TimeEntry>>(API.TIME_ENTRIES, {
         params: { page: 0, size: 50, ...(status ? { status } : {}) }
       });
       setEntries(response.data.items ?? []);
@@ -42,13 +46,27 @@ export default function AttendancePage() {
     }
   }, [activeTab, t]);
 
+  const loadEmployees = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
+        params: { page: 0, size: 200, status: "ACTIVE" }
+      });
+      setEmployees(response.data.items ?? []);
+    } catch {
+      setEmployees([]);
+    }
+  }, []);
+
   useEffect(() => { void loadEntries(); }, [loadEntries]);
+  useEffect(() => { void loadEmployees(); }, [loadEmployees]);
+
+  const employeeById = useMemo(() => new Map(employees.map((employee) => [employee.id, employee])), [employees]);
 
   const transition = async (id: string, action: "approve" | "reject") => {
     setSaving(true);
     setError(null);
     try {
-      await apiClient.post(`/time-entries/${id}/${action}`);
+      await apiClient.post(`${API.TIME_ENTRIES}/${id}/${action}`);
       await loadEntries();
     } catch {
       setError(action === "approve" ? t("pages.attendance.approveError") : t("pages.attendance.rejectError"));
@@ -58,7 +76,14 @@ export default function AttendancePage() {
   };
 
   const entriesColumns = useMemo<ColumnsType<TimeEntry>>(() => [
-    { title: t("common.employee"), dataIndex: "employeeId", render: (v: string) => v.slice(0, 8) },
+    {
+      title: t("common.employee"),
+      dataIndex: "employeeId",
+      render: (v: string) => {
+        const employee = employeeById.get(v);
+        return employee ? `${employee.employeeNo} - ${employee.fullName}` : "-";
+      }
+    },
     { title: t("common.date"), dataIndex: "date", width: 120 },
     { title: t("pages.attendance.clockIn"), dataIndex: "clockIn", width: 90 },
     { title: t("pages.attendance.clockOut"), dataIndex: "clockOut", width: 90 },
@@ -81,7 +106,7 @@ export default function AttendancePage() {
         );
       }
     }
-  ], [saving, t]);
+  ], [employeeById, saving, t]);
 
   const tabItems = [
     {

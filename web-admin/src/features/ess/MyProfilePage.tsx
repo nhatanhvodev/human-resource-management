@@ -3,12 +3,13 @@ import { UserOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../shared/api/client';
+import { getEmployeeId } from '../../shared/auth/jwt';
 
 const { Title } = Typography;
 
 type Profile = {
   id: string; fullName: string; employeeNo: string;
-  department?: { name: string }; position?: { title: string };
+  departmentName?: string; positionTitle?: string;
   employmentStatus?: string;
 };
 
@@ -21,11 +22,9 @@ export default function MyProfilePage() {
     let mounted = true;
     (async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const res = await apiClient.get<Profile>(`/employees/${payload.sub}`, {
-          headers: { 'X-Employee-Id': payload.sub }
+        const empId = getEmployeeId();
+        const res = await apiClient.get<Profile>('/self/profile', {
+          headers: { 'X-Employee-Id': empId }
         });
         if (mounted) setProfile(res.data);
       } catch { /* ignore */ }
@@ -43,8 +42,8 @@ export default function MyProfilePage() {
             <Descriptions bordered column={2}>
               <Descriptions.Item label={t('ess.employeeNoShort')}>{profile.employeeNo}</Descriptions.Item>
               <Descriptions.Item label={t('pages.employees.fullName')}>{profile.fullName}</Descriptions.Item>
-              <Descriptions.Item label={t('common.department')}>{profile.department?.name ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('common.position')}>{profile.position?.title ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('common.department')}>{profile.departmentName ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('common.position')}>{profile.positionTitle ?? '-'}</Descriptions.Item>
               <Descriptions.Item label={t('common.status')}>{profile.employmentStatus ?? '-'}</Descriptions.Item>
             </Descriptions>
           ) : (

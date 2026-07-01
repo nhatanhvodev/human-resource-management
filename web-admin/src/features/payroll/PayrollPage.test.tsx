@@ -70,7 +70,7 @@ describe("PayrollPage", () => {
 
     expect(await screen.findByText("2024-01-01 - 2024-01-31")).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button")[1]);
+    fireEvent.click(screen.getByRole("button", { name: /Lần chạy/i }));
     await waitFor(() => {
       expect(mocks.apiGet).toHaveBeenCalledWith("/payroll-runs", {
         params: { periodId: "period-1", page: 0, size: 10 }
@@ -78,6 +78,7 @@ describe("PayrollPage", () => {
     });
 
     fireEvent.click(await screen.findByRole("button", { name: /Phi/i }));
+    expect(await screen.findByText("PS0001")).toBeInTheDocument();
     expect(await screen.findByText("16.500.000")).toBeInTheDocument();
   });
 });

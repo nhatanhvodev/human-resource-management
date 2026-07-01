@@ -52,7 +52,8 @@
     "description": "Mô tả",
     "notAvailable": "-",
     "submit": "Gửi",
-    "upload": "Tải lên"
+    "upload": "Tải lên",
+    "download": "Tải xuống"
   },
   "app": {
     "adminBrand": "Quản trị nhân sự",
@@ -69,7 +70,19 @@
     "managerWorkspace": "Không gian quản lý"
   },
   "auth": {
-    "forbidden": "Bạn không có quyền truy cập chức năng này."
+    "forbidden": "Bạn không có quyền truy cập chức năng này.",
+    "logout": "Đăng xuất",
+    "login": {
+      "eyebrow": "HRMS",
+      "title": "Đăng nhập",
+      "subtitle": "Chọn tài khoản demo hoặc nhập username/password để test đúng role.",
+      "tenant": "Mã đơn vị",
+      "username": "Tên đăng nhập",
+      "password": "Mật khẩu",
+      "submit": "Đăng nhập",
+      "error": "Sai tên đăng nhập hoặc mật khẩu.",
+      "demoAccounts": "Tài khoản demo"
+    }
   },
   "table": {
     "emptyTitle": "Không có dữ liệu",
@@ -179,7 +192,9 @@
       "company": "Công ty",
       "drawerTitle": "Phòng ban: {{name}}",
       "codeShort": "Mã",
-      "employeeCount": "Số nhân viên"
+      "employeeCount": "Số nhân viên",
+      "manager": "Trưởng phòng",
+      "noManager": "Chưa gán trưởng phòng"
     },
     "employees": {
       "title": "Nhân viên",

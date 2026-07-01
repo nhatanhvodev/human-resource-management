@@ -26,17 +26,17 @@ public class PerformanceController {
     @PreAuthorize("hasAuthority('performance:read')")
     public PageResponse<CycleResponse> listCycles(Pageable pageable) {
         return PageResponse.from(performanceService.listCycles(pageable)
-            .map(c -> new CycleResponse(c.getId(), c.getName(), c.getCycleType().name(),
-                c.getStartDate(), c.getEndDate(), c.getStatus().name())));
+            .map(c -> new CycleResponse(c.id(), c.name(), c.cycleType(),
+                c.startDate(), c.endDate(), c.status())));
     }
 
     @GetMapping("/cycles/{cycleId}/reviews")
     @PreAuthorize("hasAuthority('performance:read')")
     public List<ReviewResponse> listReviews(@PathVariable UUID cycleId) {
         return performanceService.listReviewsByCycle(cycleId).stream()
-            .map(r -> new ReviewResponse(r.getId(), r.getCycle().getId(), r.getEmployeeId(),
-                r.getReviewerType().name(), r.getReviewerId(), r.getOverallScore(),
-                r.getStrengths(), r.getImprovements(), r.getStatus().name(), r.getSubmittedAt()))
+            .map(r -> new ReviewResponse(r.id(), null, r.employeeId(),
+                r.reviewerType(), r.reviewerId(), r.overallScore(),
+                r.strengths(), r.improvements(), r.status(), r.submittedAt()))
             .toList();
     }
 
@@ -44,8 +44,8 @@ public class PerformanceController {
     @PreAuthorize("hasAuthority('performance:read')")
     public List<KPIResponse> listKPIs(@PathVariable UUID cycleId) {
         return performanceService.listKPIs(cycleId).stream()
-            .map(k -> new KPIResponse(k.getId(), k.getEmployeeId(), k.getCycle().getId(),
-                k.getTitle(), k.getDescription(), k.getTargetScore(), k.getActualScore(), k.getWeight()))
+            .map(k -> new KPIResponse(k.id(), k.employeeId(), null,
+                k.title(), k.description(), k.targetScore(), k.actualScore(), k.weight()))
             .toList();
     }
 
@@ -53,9 +53,9 @@ public class PerformanceController {
     @PreAuthorize("hasAuthority('performance:read')")
     public List<ReviewResponse> listEmployeeReviews(@PathVariable UUID employeeId) {
         return performanceService.listReviewsByEmployee(employeeId).stream()
-            .map(r -> new ReviewResponse(r.getId(), r.getCycle().getId(), r.getEmployeeId(),
-                r.getReviewerType().name(), r.getReviewerId(), r.getOverallScore(),
-                r.getStrengths(), r.getImprovements(), r.getStatus().name(), r.getSubmittedAt()))
+            .map(r -> new ReviewResponse(r.id(), null, r.employeeId(),
+                r.reviewerType(), r.reviewerId(), r.overallScore(),
+                r.strengths(), r.improvements(), r.status(), r.submittedAt()))
             .toList();
     }
 

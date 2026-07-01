@@ -2,6 +2,7 @@ package com.company.hrms.integration.application;
 
 import com.company.hrms.integration.domain.Notification;
 import com.company.hrms.integration.infrastructure.NotificationRepository;
+import com.company.hrms.shared.security.SecurityUtils;
 import com.company.hrms.shared.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,8 +18,12 @@ public class NotificationService {
     public NotificationService(NotificationRepository repository) { this.repository = repository; }
 
     @Transactional
-    public Notification create(UUID recipientId, String title, String body, String type) {
-        return repository.save(new Notification(UUID.randomUUID(), TenantContext.get(), recipientId, title, body, type));
+    public Notification create(UUID recipientId, String title, String body, String type,
+                                String detail, String fileUrl, String fileName) {
+        UUID creatorId = SecurityUtils.getCurrentEmployeeId();
+        String creatorName = SecurityUtils.getCurrentEmployeeName();
+        return repository.save(new Notification(UUID.randomUUID(), TenantContext.get(), recipientId,
+            title, body, type, creatorId, creatorName, detail, fileUrl, fileName));
     }
 
     @Transactional(readOnly = true)
