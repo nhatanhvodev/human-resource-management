@@ -10,6 +10,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+app:
+  security:
+    private-key-location: classpath:keys/test-private.pem
+    public-key-location: classpath:keys/test-public.pem
 management:
   health:
     rabbit:
