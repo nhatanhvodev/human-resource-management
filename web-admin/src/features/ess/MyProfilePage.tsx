@@ -1,9 +1,8 @@
 import { Card, Descriptions, Skeleton, Typography } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiClient } from '../../shared/api/client';
-import { getEmployeeId } from '../../shared/auth/jwt';
+import { API } from '../../shared/api/endpoints';
+import { useApiQuery } from '../../shared/api/query';
 
 const { Title } = Typography;
 
@@ -15,29 +14,14 @@ type Profile = {
 
 export default function MyProfilePage() {
   const { t } = useTranslation();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const empId = getEmployeeId();
-        const res = await apiClient.get<Profile>('/self/profile', {
-          headers: { 'X-Employee-Id': empId }
-        });
-        if (mounted) setProfile(res.data);
-      } catch { /* ignore */ }
-      finally { if (mounted) setLoading(false); }
-    })();
-    return () => { mounted = false; };
-  }, []);
+  // Identity comes from the JWT claim server-side; no employee header needed.
+  const { data: profile, isLoading } = useApiQuery<Profile>(['self', 'profile'], API.SELF.PROFILE);
 
   return (
     <div className="page-header">
       <Title level={3}><UserOutlined /> {t('ess.profile')}</Title>
       <Card>
-        <Skeleton loading={loading} active>
+        <Skeleton loading={isLoading} active>
           {profile ? (
             <Descriptions bordered column={2}>
               <Descriptions.Item label={t('ess.employeeNoShort')}>{profile.employeeNo}</Descriptions.Item>

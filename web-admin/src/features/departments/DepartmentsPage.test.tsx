@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DepartmentsPage from "./DepartmentsPage";
+import { renderWithProviders } from "../../test/utils";
 
 const mocks = vi.hoisted(() => ({
   apiDelete: vi.fn(),
@@ -35,7 +36,7 @@ describe("DepartmentsPage", () => {
   });
 
   it("hiển thị phòng ban từ API và mở form tạo mới", async () => {
-    render(<DepartmentsPage />);
+    renderWithProviders(<DepartmentsPage />);
 
     expect(await screen.findByText("Kỹ thuật")).toBeInTheDocument();
     expect(mocks.apiGet).toHaveBeenCalledWith("/departments", {
@@ -47,7 +48,7 @@ describe("DepartmentsPage", () => {
   });
 
   it("gọi API cập nhật khi lưu form sửa phòng ban", async () => {
-    render(<DepartmentsPage />);
+    renderWithProviders(<DepartmentsPage />);
 
     expect(await screen.findByText("Kỹ thuật")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Sửa/i }));
@@ -66,7 +67,7 @@ describe("DepartmentsPage", () => {
 
   it("gọi API xóa sau khi xác nhận xóa phòng ban", async () => {
     mocks.apiDelete.mockResolvedValue({ data: undefined });
-    render(<DepartmentsPage />);
+    renderWithProviders(<DepartmentsPage />);
 
     expect(await screen.findByText("Kỹ thuật")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Xóa/i }));

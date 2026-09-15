@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruitmentPage from "./RecruitmentPage";
+import { renderWithProviders } from "../../test/utils";
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
@@ -42,7 +43,7 @@ describe("RecruitmentPage", () => {
   });
 
   it("gọi API cập nhật ứng viên khi lưu form sửa", async () => {
-    render(<RecruitmentPage />);
+    renderWithProviders(<RecruitmentPage />);
 
     expect(await screen.findByText("Trần Ứng Viên")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Sửa ứng viên/i }));
@@ -59,7 +60,7 @@ describe("RecruitmentPage", () => {
   });
 
   it("gọi đúng API chuyển hồ sơ thành nhân viên", async () => {
-    render(<RecruitmentPage />);
+    renderWithProviders(<RecruitmentPage />);
 
     fireEvent.click(await screen.findByRole("tab", { name: /Hồ sơ ứng tuyển/i }));
     fireEvent.click(await screen.findByRole("button", { name: /Chuyển thành nhân viên/i }));

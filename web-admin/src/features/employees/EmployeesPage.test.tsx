@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import EmployeesPage from "./EmployeesPage";
+import { renderWithProviders } from "../../test/utils";
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
@@ -60,7 +61,7 @@ describe("EmployeesPage", () => {
   });
 
   it("lọc nhân viên theo trạng thái", async () => {
-    render(<EmployeesPage />);
+    renderWithProviders(<EmployeesPage />);
 
     fireEvent.click(screen.getByText("Đang làm việc"));
 
@@ -71,7 +72,7 @@ describe("EmployeesPage", () => {
   });
 
   it("mở chi tiết nhân viên bằng dữ liệu API đang có", async () => {
-    render(<EmployeesPage />);
+    renderWithProviders(<EmployeesPage />);
 
     expect(await screen.findByText("Nguyễn Văn A")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Chi tiết/i }));
@@ -94,7 +95,7 @@ describe("EmployeesPage", () => {
   });
 
   it("gọi API cập nhật và đổi trạng thái nhân viên", async () => {
-    render(<EmployeesPage />);
+    renderWithProviders(<EmployeesPage />);
 
     expect(await screen.findByText("Nguyễn Văn A")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Sửa$/i }));

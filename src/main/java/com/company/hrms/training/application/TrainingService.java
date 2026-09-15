@@ -60,7 +60,9 @@ public class TrainingService {
 
     @Transactional
     public Enrollment updateProgress(UUID enrollmentId, int progress) {
+        String tenantId = TenantContext.get();
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .filter(e -> tenantId.equals(e.getTenantId()))
             .orElseThrow(() -> new NotFoundException("Enrollment not found: " + enrollmentId));
         enrollment.updateProgress(progress);
         return enrollmentRepository.save(enrollment);

@@ -1,10 +1,10 @@
 import { Alert, Descriptions, Drawer } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 
@@ -22,23 +22,15 @@ type AuditLog = {
 
 export default function AuditLogPage() {
   const { t } = useTranslation();
-  const [items, setItems] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AuditLog | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get<PageResponse<AuditLog>>(API.AUDIT_LOGS, { params: { page: 0, size: 100 } });
-      setItems(res.data.items ?? []);
-    } catch {
-      setError(t("pages.audit.loadError"));
-    } finally { setLoading(false); }
-  }, [t]);
+  const { data, isLoading, isError } = useApiQuery<PageResponse<AuditLog>>(["audit-logs"], API.AUDIT_LOGS, {
+    config: { params: { page: 0, size: 100 } }
+  });
 
-  useEffect(() => { void load(); }, [load]);
+  const items = (data as PageResponse<AuditLog> | undefined)?.items ?? [];
+  const loading = isLoading;
+  const error = isError ? t("pages.audit.loadError") : null;
 
   const columns = useMemo<ColumnsType<AuditLog>>(() => [
     { title: t("pages.audit.time"), dataIndex: "createdAt", width: 180 },

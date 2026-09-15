@@ -1,11 +1,11 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Drawer, Form, Input, Select, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -26,46 +26,35 @@ type Announcement = {
 
 export default function AnnouncementsPage() {
   const { t } = useTranslation();
-  const [items, setItems] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [detailItem, setDetailItem] = useState<Announcement | null>(null);
   const [form] = Form.useForm();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get<PageResponse<Announcement>>(API.ANNOUNCEMENTS, { params: { page: 0, size: 50 } });
-      setItems(res.data.items ?? []);
-    } catch {
-      setError(t("pages.announcements.loadError"));
-    } finally { setLoading(false); }
-  }, [t]);
+  const announcementsQuery = useApiQuery<PageResponse<Announcement>>(["announcements"], API.ANNOUNCEMENTS, {
+    config: { params: { page: 0, size: 50 } }
+  });
 
-  useEffect(() => { void load(); }, [load]);
+  const items = (announcementsQuery.data as PageResponse<Announcement> | undefined)?.items ?? [];
+  const loading = announcementsQuery.isLoading;
+  const visibleError = error ?? (announcementsQuery.isError ? t("pages.announcements.loadError") : null);
+
+  const announcementsMutation = useApiMutation({ invalidateKeys: [["announcements"]] });
+  const saving = announcementsMutation.isPending;
 
   const create = async (values: any) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.ANNOUNCEMENTS, values);
+      await announcementsMutation.mutateAsync({ url: API.ANNOUNCEMENTS, body: values });
       form.resetFields();
       setOpenCreate(false);
-      await load();
     } catch { setError(t("pages.announcements.createError")); }
-    finally { setSaving(false); }
   };
 
   const deleteAnnouncement = async (id: string) => {
-    setSaving(true);
     try {
-      await apiClient.delete(`${API.ANNOUNCEMENTS}/${id}`);
-      await load();
+      await announcementsMutation.mutateAsync({ url: `${API.ANNOUNCEMENTS}/${id}`, method: "delete" });
     } catch { setError(t("pages.announcements.deleteError")); }
-    finally { setSaving(false); }
   };
 
   const columns = useMemo<ColumnsType<Announcement>>(() => [
@@ -105,7 +94,7 @@ export default function AnnouncementsPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>{t("pages.announcements.create")}</Button>
       </PageToolbar>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
 
       <AppTable<Announcement> rowKey="id" loading={loading} columns={columns} dataSource={items} pagination={false} />
 

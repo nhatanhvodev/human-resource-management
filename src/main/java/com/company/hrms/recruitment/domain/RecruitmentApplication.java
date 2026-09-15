@@ -72,7 +72,7 @@ public class RecruitmentApplication extends AuditableEntity {
         return status;
     }
 
-    public void setStatus(ApplicationStatus status) {
-        this.status = status;
-    }
+    public void acceptOffer() { this.status = ApplicationStatus.OFFER_ACCEPTED; }
+    public void markHired() { this.status = ApplicationStatus.HIRED; }
+    public void setStatus(ApplicationStatus status) { this.status = status; }
 }

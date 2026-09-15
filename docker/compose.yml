@@ -70,6 +70,9 @@ services:
   #     SPRING_RABBITMQ_PORT: 5672
   #     SPRING_RABBITMQ_USERNAME: guest
   #     SPRING_RABBITMQ_PASSWORD: guest
+  #     # Production JWT keys (mount host files or docker secrets):
+  #     APP_JWT_PRIVATE_KEY_LOCATION: file:/run/secrets/jwt-private.pem
+  #     APP_JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt-public.pem
   #     JAVA_OPTS: ${JAVA_OPTS:--Xmx512m -Xms256m}
   #   depends_on:
   #     postgres:

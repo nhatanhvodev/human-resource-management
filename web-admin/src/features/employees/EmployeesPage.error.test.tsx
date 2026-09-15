@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import EmployeesPage from "./EmployeesPage";
+import { renderWithProviders } from "../../test/utils";
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn()
@@ -37,7 +38,7 @@ describe("EmployeesPage error state", () => {
   });
 
   it("renders a focused error state without the default table empty copy", async () => {
-    render(<EmployeesPage />);
+    renderWithProviders(<EmployeesPage />);
 
     expect(await screen.findByText("Không tải được danh sách nhân viên")).toBeInTheDocument();
     expect(screen.getByText("Kiểm tra token, tenant và kết nối backend rồi tải lại trang.")).toBeInTheDocument();

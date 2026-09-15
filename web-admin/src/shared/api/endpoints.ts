@@ -57,6 +57,7 @@ export const API = {
   SELF: {
     PROFILE: "/self/profile",
     PAYSLIPS: "/self/payslips",
+    LEAVE_BALANCES: "/self/leave-balances",
     LEAVE_REQUESTS: "/self/leave-requests",
     TIME_ENTRIES: "/self/time-entries",
     CLOCK_IN: "/self/time-entries/clock-in",

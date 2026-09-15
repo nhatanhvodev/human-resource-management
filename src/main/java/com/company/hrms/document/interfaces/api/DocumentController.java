@@ -4,6 +4,7 @@ import com.company.hrms.document.application.DocumentService;
 import com.company.hrms.document.domain.Document;
 import com.company.hrms.document.domain.DocumentCategory;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import com.company.hrms.shared.security.SecurityUtils;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
@@ -56,8 +57,10 @@ public class DocumentController {
 
     @GetMapping("/mine")
     @PreAuthorize("hasAuthority('document:read')")
-    public PageResponse<DocumentResponse> mine(@RequestHeader("X-Employee-Id") UUID employeeId,
-                                                Pageable pageable) {
+    public PageResponse<DocumentResponse> mine(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId,
+                                                 Pageable pageable) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         return PageResponse.from(
             service.listMine(employeeId, pageable).map(DocumentController::toResponse));
     }

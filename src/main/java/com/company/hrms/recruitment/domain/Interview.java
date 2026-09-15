@@ -49,6 +49,7 @@ public class Interview extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public UUID getApplicationId() { return applicationId; }
     public UUID getInterviewerId() { return interviewerId; }
     public Instant getScheduledAt() { return scheduledAt; }

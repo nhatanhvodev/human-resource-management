@@ -1,10 +1,9 @@
 import { Card, Col, Progress, Row, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiClient } from '../../shared/api/client';
+import { asArray, useApiQuery } from '../../shared/api/query';
 import type { PageResponse } from '../../shared/api/types';
-import { getEmployeeId } from '../../shared/auth/jwt';
+import { useAccess } from '../../shared/auth/access';
 import { StatusTag } from '../../shared/ui/StatusTag';
 
 const { Title } = Typography;
@@ -20,32 +19,23 @@ type Course = {
 
 export default function MyTrainingPage() {
   const { t } = useTranslation();
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { access } = useAccess();
+  const empId = access?.employeeId ?? '';
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const empId = getEmployeeId();
-        const [eRes, cRes] = await Promise.all([
-          apiClient.get<Enrollment[]>(`/training/enrollments/employee/${empId}`, {
-            headers: { 'X-Employee-Id': empId }
-          }),
-          apiClient.get<PageResponse<Course>>('/training/courses', {
-            params: { page: 0, size: 20 },
-            headers: { 'X-Employee-Id': empId }
-          })
-        ]);
-        if (mounted) {
-          setEnrollments(Array.isArray(eRes.data) ? eRes.data : []);
-          setCourses(cRes.data.items ?? []);
-        }
-      } finally { if (mounted) setLoading(false); }
-    })();
-    return () => { mounted = false; };
-  }, []);
+  const enrollmentsQuery = useApiQuery<Enrollment[]>(
+    ['self', 'enrollments', empId],
+    `/training/enrollments/employee/${empId}`,
+    { enabled: Boolean(empId) }
+  );
+  const coursesQuery = useApiQuery<PageResponse<Course>>(
+    ['training', 'courses'],
+    '/training/courses',
+    { config: { params: { page: 0, size: 20 } } }
+  );
+
+  const enrollments = asArray<Enrollment>(enrollmentsQuery.data);
+  const courses = coursesQuery.data?.items ?? [];
+  const loading = enrollmentsQuery.isLoading || coursesQuery.isLoading;
 
   const eCols: ColumnsType<Enrollment> = [
     {

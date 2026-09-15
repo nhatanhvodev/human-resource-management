@@ -2,6 +2,10 @@ package com.company.hrms.shared.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
@@ -10,6 +14,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.security.SecureRandom;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.List;
@@ -18,13 +25,21 @@ import java.util.UUID;
 
 @Service
 public class RbacAuthorityService {
+    private static final Logger log = LoggerFactory.getLogger(RbacAuthorityService.class);
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public RbacAuthorityService(JdbcTemplate jdbcTemplate) {
+    public RbacAuthorityService(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         this.jdbcTemplate = jdbcTemplate;
+        this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * P1: cached — this runs on every authenticated request (3-4 queries).
+     * Evicted by all role/user/permission mutations below.
+     */
+    @Cacheable(value = "rbacAccess", key = "#tenantId + '|' + #subject + '|' + #employeeId")
     public AccessSnapshot currentAccess(String tenantId, String subject, String employeeId) {
         Optional<UserRow> user = findUser(tenantId, subject, employeeId);
         if (user.isEmpty()) {
@@ -94,6 +109,7 @@ public class RbacAuthorityService {
         }, tenantId);
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public void replaceRolePermissions(String tenantId, UUID roleId, List<String> permissionCodes) {
         assertRoleInTenant(tenantId, roleId);
@@ -107,10 +123,11 @@ public class RbacAuthorityService {
             try {
                 auditLog(tenantId, actorId, "ROLE_PERMISSIONS_CHANGED", "ROLE", roleId,
                     "{\"permissionCodes\": " + objectMapper.writeValueAsString(permissionCodes) + "}");
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public void replaceUserRoles(String tenantId, UUID userId, List<UUID> roleIds) {
         assertUserInTenant(tenantId, userId);
@@ -125,12 +142,13 @@ public class RbacAuthorityService {
             try {
                 auditLog(tenantId, actorId, "USER_ROLES_CHANGED", "USER", userId,
                     "{\"roleIds\": " + objectMapper.writeValueAsString(roleIds) + "}");
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
     }
 
     // ── Task 5: Role CRUD + User management ──
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public RoleResponse createRole(String tenantId, String code, String name, String description, UUID templateRoleId) {
         UUID id = UUID.randomUUID();
@@ -152,11 +170,12 @@ public class RbacAuthorityService {
             try {
                 auditLog(tenantId, actorId, "ROLE_CREATED", "ROLE", id,
                     "{\"code\": \"" + code + "\", \"name\": \"" + name + "\"}");
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
         return new RoleResponse(id, code, name, description, false, templateRoleId != null ? listPermissionCodesForRole(id) : List.of());
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public void deleteRole(String tenantId, UUID roleId) {
         Integer isSystem = jdbcTemplate.queryForObject(
@@ -171,27 +190,31 @@ public class RbacAuthorityService {
         if (actorId != null) {
             try {
                 auditLog(tenantId, actorId, "ROLE_DELETED", "ROLE", roleId, null);
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public UserResponse createUser(String tenantId, String username, String displayName, UUID employeeId) {
         UUID id = UUID.randomUUID();
+        String initialPassword = generateInitialPassword();
+        String passwordHash = passwordEncoder.encode(initialPassword);
         jdbcTemplate.update(
-            "insert into app_user (id, tenant_id, username, display_name, employee_id, enabled, created_at, updated_at) values (?, ?, ?, ?, ?, true, now(), now())",
-            id, tenantId, username, displayName, employeeId
+            "insert into app_user (id, tenant_id, username, display_name, employee_id, password_hash, enabled, created_at, updated_at) values (?, ?, ?, ?, ?, ?, true, now(), now())",
+            id, tenantId, username, displayName, employeeId, passwordHash
         );
         UUID actorId = currentUserId();
         if (actorId != null) {
             try {
                 auditLog(tenantId, actorId, "USER_CREATED", "USER", id,
                     "{\"username\": \"" + username + "\"}");
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
         return new UserResponse(id, username, displayName, employeeId, true, List.of());
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public void setUserEnabled(String tenantId, UUID userId, boolean enabled) {
         assertUserInTenant(tenantId, userId);
@@ -200,7 +223,7 @@ public class RbacAuthorityService {
         if (actorId != null) {
             try {
                 auditLog(tenantId, actorId, enabled ? "USER_ENABLED" : "USER_DISABLED", "USER", userId, null);
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
     }
 
@@ -211,6 +234,7 @@ public class RbacAuthorityService {
         return listScopedDepartmentIds(userId);
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public void setUserScopes(String tenantId, UUID userId, List<UUID> departmentIds) {
         assertUserInTenant(tenantId, userId);
@@ -226,7 +250,7 @@ public class RbacAuthorityService {
             try {
                 auditLog(tenantId, actorId, "USER_SCOPES_CHANGED", "USER", userId,
                     "{\"departmentIds\": " + objectMapper.writeValueAsString(departmentIds) + "}");
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
     }
 
@@ -272,6 +296,7 @@ public class RbacAuthorityService {
 
     // ── Task 9: IdP group-to-role mapping ──
 
+    @Cacheable(value = "rbacIdp", key = "'groups|' + #tenantId + '|' + #idpGroups")
     public List<UUID> resolveIdpRoleIds(String tenantId, List<String> idpGroups) {
         if (idpGroups == null || idpGroups.isEmpty()) return List.of();
         return jdbcTemplate.queryForList(
@@ -280,6 +305,7 @@ public class RbacAuthorityService {
         );
     }
 
+    @Cacheable(value = "rbacIdp", key = "'perms|' + #roleIds")
     public List<String> listPermissionCodesForRoles(List<UUID> roleIds) {
         if (roleIds == null || roleIds.isEmpty()) return List.of();
         return jdbcTemplate.queryForList(
@@ -303,6 +329,7 @@ public class RbacAuthorityService {
         );
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public IdpMappingResponse createIdpMapping(String tenantId, String idpGroup, UUID roleId) {
         assertRoleInTenant(tenantId, roleId);
@@ -316,12 +343,13 @@ public class RbacAuthorityService {
         if (actorId != null) {
             try {
                 auditLog(tenantId, actorId, "IDP_MAPPING_CREATED", "IDP_MAPPING", id,
-                    "{\"idpGroup\": \"" + idpGroup + "\", \"roleId\": \"" + roleId + "\"}");
-            } catch (Exception ignored) {}
+                    "{\"idpGroup\": " + objectMapper.writeValueAsString(idpGroup) + ", \"roleId\": \"" + roleId + "\"}");
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
         return new IdpMappingResponse(id, idpGroup, roleId, roleCode);
     }
 
+    @CacheEvict(value = {"rbacAccess", "rbacIdp"}, allEntries = true)
     @Transactional
     public void deleteIdpMapping(String tenantId, UUID mappingId) {
         jdbcTemplate.update("delete from security_idp_mapping where tenant_id = ? and id = ?", tenantId, mappingId);
@@ -329,7 +357,7 @@ public class RbacAuthorityService {
         if (actorId != null) {
             try {
                 auditLog(tenantId, actorId, "IDP_MAPPING_DELETED", "IDP_MAPPING", mappingId, null);
-            } catch (Exception ignored) {}
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
         }
     }
 
@@ -437,6 +465,25 @@ public class RbacAuthorityService {
         if (count == null || count == 0) {
             throw new IllegalArgumentException("User not found in tenant");
         }
+    }
+
+    @Transactional
+    public void setUserPassword(String tenantId, UUID userId, String rawPassword) {
+        assertUserInTenant(tenantId, userId);
+        String passwordHash = passwordEncoder.encode(rawPassword);
+        jdbcTemplate.update("update app_user set password_hash = ?, updated_at = now() where id = ?", passwordHash, userId);
+        UUID actorId = currentUserId();
+        if (actorId != null) {
+            try {
+                auditLog(tenantId, actorId, "PASSWORD_CHANGED", "USER", userId, null);
+            } catch (Exception e) { log.warn("Failed to write audit log", e); }
+        }
+    }
+
+    private static String generateInitialPassword() {
+        byte[] bytes = new byte[6];
+        new SecureRandom().nextBytes(bytes);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     private static UUID parseUuid(String value) {

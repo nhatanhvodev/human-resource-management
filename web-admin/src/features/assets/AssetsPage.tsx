@@ -1,11 +1,11 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, InputNumber, Select, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -28,10 +28,6 @@ type Employee = { id: string; employeeNo: string; fullName: string };
 
 export default function AssetsPage() {
   const { t, i18n } = useTranslation();
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openAssign, setOpenAssign] = useState(false);
@@ -39,67 +35,49 @@ export default function AssetsPage() {
   const [form] = Form.useForm();
   const [assignForm] = Form.useForm();
 
-  const loadAssets = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get<PageResponse<Asset>>(API.ASSETS, { params: { page: 0, size: 50 } });
-      setAssets(res.data.items ?? []);
-    } catch {
-      setError(t("pages.assets.loadError"));
-    } finally { setLoading(false); }
-  }, [t]);
+  const assetsQuery = useApiQuery<PageResponse<Asset>>(["assets"], API.ASSETS, {
+    config: { params: { page: 0, size: 50 } }
+  });
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(["employees", "active"], API.EMPLOYEES, {
+    config: { params: { page: 0, size: 100, status: "ACTIVE" } }
+  });
 
-  const loadEmployees = useCallback(async () => {
-    try {
-      const res = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 100, status: "ACTIVE" } });
-      setEmployees(res.data.items ?? []);
-    } catch { setEmployees([]); }
-  }, []);
+  const assets = (assetsQuery.data as PageResponse<Asset> | undefined)?.items ?? [];
+  const employees = (employeesQuery.data as PageResponse<Employee> | undefined)?.items ?? [];
+  const loading = assetsQuery.isLoading;
+  const visibleError = error ?? (assetsQuery.isError ? t("pages.assets.loadError") : null);
 
-  useEffect(() => { void loadAssets(); }, [loadAssets]);
-  useEffect(() => { void loadEmployees(); }, [loadEmployees]);
+  const assetsMutation = useApiMutation({ invalidateKeys: [["assets"]] });
+  const saving = assetsMutation.isPending;
 
   const createAsset = async (values: any) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.ASSETS, values);
+      await assetsMutation.mutateAsync({ url: API.ASSETS, body: values });
       form.resetFields();
       setOpenCreate(false);
-      await loadAssets();
     } catch { setError(t("pages.assets.createError")); }
-    finally { setSaving(false); }
   };
 
   const assignAsset = async (values: { employeeId: string }) => {
     if (!selectedAssetId) return;
-    setSaving(true);
     try {
-      await apiClient.post(`${API.ASSETS}/${selectedAssetId}/assign`, values);
+      await assetsMutation.mutateAsync({ url: `${API.ASSETS}/${selectedAssetId}/assign`, body: values });
       assignForm.resetFields();
       setOpenAssign(false);
-      await loadAssets();
     } catch { setError(t("pages.assets.assignError")); }
-    finally { setSaving(false); }
   };
 
   const unassignAsset = async (id: string) => {
-    setSaving(true);
     try {
-      await apiClient.post(`${API.ASSETS}/${id}/unassign`);
-      await loadAssets();
+      await assetsMutation.mutateAsync({ url: `${API.ASSETS}/${id}/unassign`, body: null });
     } catch { setError(t("pages.assets.unassignError")); }
-    finally { setSaving(false); }
   };
 
   const deleteAsset = async (id: string) => {
-    setSaving(true);
     try {
-      await apiClient.delete(`${API.ASSETS}/${id}`);
-      await loadAssets();
+      await assetsMutation.mutateAsync({ url: `${API.ASSETS}/${id}`, method: "delete" });
     } catch { setError(t("pages.assets.deleteError")); }
-    finally { setSaving(false); }
   };
 
   const columns = useMemo<ColumnsType<Asset>>(() => [
@@ -149,7 +127,7 @@ export default function AssetsPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>{t("pages.assets.add")}</Button>
       </PageToolbar>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
 
       <AppTable<Asset> rowKey="id" loading={loading} columns={columns} dataSource={assets} pagination={false} />
 

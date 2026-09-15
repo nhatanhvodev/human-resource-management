@@ -10,10 +10,14 @@ import {
 } from "@dnd-kit/core";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { Button, Card, Form, Input, Select, message } from "antd";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { apiClient } from "../../shared/api/client";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { API } from "../../shared/api/endpoints";
+// NOTE: `as UseQueryResult<...>` restores useApiQuery's documented return type, which currently
+// degrades under the installed @tanstack/react-query 5.102.8 (overload error inside query.ts).
+// The cast is type-only and has zero runtime effect.
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 
 type TaskItem = { id: string; employeeId: string; title: string; description: string; status: string; completedAt: string | null };
@@ -53,26 +57,26 @@ function TaskCard({ task }: { task: TaskItem }) {
 
 export default function OnboardingBoard() {
   const { t } = useTranslation();
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const activeTask = tasks.find(t => t.id === activeId);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  useEffect(() => {
-    apiClient.get<PageResponse<Employee>>("/employees", { params: { page: 0, size: 100, status: "ACTIVE" } })
-      .then(r => setEmployees(r.data.items ?? [])).catch(() => {});
-  }, []);
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(["onboarding", "board-employees"], API.EMPLOYEES, {
+    config: { params: { page: 0, size: 100, status: "ACTIVE" } }
+  }) as UseQueryResult<PageResponse<Employee>, unknown>;
+  // Same URL shape as before (/onboarding/tasks/:employeeId); disabled until an employee is picked.
+  const tasksQuery = useApiQuery<TaskItem[]>(
+    ["onboarding", "board-tasks", selectedEmployee],
+    selectedEmployee ? `${API.ONBOARDING.TASKS}/${selectedEmployee}` : API.ONBOARDING.TASKS,
+    { enabled: !!selectedEmployee }
+  ) as UseQueryResult<TaskItem[], unknown>;
+  const completeMutation = useApiMutation({
+    invalidateKeys: [["onboarding", "board-tasks"]]
+  });
 
-  useEffect(() => {
-    if (selectedEmployee) {
-      apiClient.get<TaskItem[]>(`/onboarding/tasks/${selectedEmployee}`)
-        .then(r => setTasks(r.data ?? [])).catch(() => setTasks([]));
-    } else {
-      setTasks([]);
-    }
-  }, [selectedEmployee]);
+  const employees = employeesQuery.data?.items ?? [];
+  const tasks = tasksQuery.data ?? [];
+  const activeTask = tasks.find(t => t.id === activeId);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveId(null);
@@ -86,8 +90,7 @@ export default function OnboardingBoard() {
 
     if (targetStatus === "DONE") {
       try {
-        await apiClient.post(`/onboarding/tasks/${taskId}/complete`);
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: "DONE", completedAt: new Date().toISOString() } : t));
+        await completeMutation.mutateAsync({ url: `${API.ONBOARDING.TASKS}/${taskId}/complete`, body: null });
         message.success(t("pages.onboarding.taskCompleted"));
       } catch { message.error(t("pages.onboarding.taskCompleteError")); }
     }
@@ -98,9 +101,9 @@ export default function OnboardingBoard() {
     // tasks count is 0, means either no employee selected or no tasks exist
     // just reload to check
     if (selectedEmployee) {
-      apiClient.get<TaskItem[]>(`/onboarding/tasks/${selectedEmployee}`)
-        .then(r => { setTasks(r.data ?? []); if (r.data?.length === 0) message.info(t("pages.onboarding.noTasksForEmployee")); })
-        .catch(() => {});
+      void tasksQuery.refetch().then((result) => {
+        if ((result.data ?? []).length === 0) message.info(t("pages.onboarding.noTasksForEmployee"));
+      });
     }
   };
 

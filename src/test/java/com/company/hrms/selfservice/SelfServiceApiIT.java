@@ -211,4 +211,33 @@ class SelfServiceApiIT {
                 .with(jwt().authorities(new SimpleGrantedAuthority("employee:read"))))
             .andExpect(status().isForbidden());
     }
+
+    @Test
+    void jwtEmployeeIdWinsOverSpoofedHeader() throws Exception {
+        String attackerEmployee = "b1200000-0000-4000-8000-eeee00000099";
+        jdbc.update("""
+            INSERT INTO employee (id, tenant_id, employee_no, full_name, department_id, hire_date, employment_status, email, phone, gender, created_at, updated_at)
+            SELECT ?, ?, 'ATTACKER', 'Attacker', ?, '2026-01-15', 'ACTIVE', 'attacker@company.vn', '0900000000', 'MALE', now(), now()
+            WHERE NOT EXISTS (SELECT 1 FROM employee WHERE id = ?)
+            """, attackerEmployee, TENANT, DEPARTMENT_ID, attackerEmployee);
+
+        // Attacker presents a valid JWT for their own employee_id but spoofs
+        // the victim's id in X-Employee-Id. The JWT claim must win.
+        mvc.perform(get("/api/v1/self/profile")
+                .header("X-Tenant-Id", TENANT)
+                .header("X-Employee-Id", EMPLOYEE_ID)
+                .with(jwt().authorities(new SimpleGrantedAuthority("self:access"))
+                    .jwt(jwt -> jwt.claim("employee_id", attackerEmployee))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(attackerEmployee))
+            .andExpect(jsonPath("$.fullName").value("Attacker"));
+    }
+
+    @Test
+    void missingIdentityIsForbidden() throws Exception {
+        mvc.perform(get("/api/v1/self/profile")
+                .header("X-Tenant-Id", TENANT)
+                .with(jwt().authorities(new SimpleGrantedAuthority("self:access"))))
+            .andExpect(status().isForbidden());
+    }
 }

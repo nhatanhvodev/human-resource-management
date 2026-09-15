@@ -25,6 +25,7 @@ public class OnboardingTemplate extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public String getName() { return name; }
     public String getDescription() { return description; }
 }

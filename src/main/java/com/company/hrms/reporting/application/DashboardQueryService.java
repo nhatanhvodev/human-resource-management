@@ -110,8 +110,8 @@ public class DashboardQueryService {
     public LeaveSummary leaveSummary() {
         String tenantId = TenantContext.get();
         long pending = leaveRequestRepository.countByTenantIdAndStatus(tenantId, LeaveStatus.PENDING);
-        long approved = leaveRequestRepository.findByTenantIdAndStatus(tenantId, LeaveStatus.APPROVED, org.springframework.data.domain.Pageable.unpaged()).getTotalElements();
-        long rejected = leaveRequestRepository.findByTenantIdAndStatus(tenantId, LeaveStatus.REJECTED, org.springframework.data.domain.Pageable.unpaged()).getTotalElements();
+        long approved = leaveRequestRepository.countByTenantIdAndStatus(tenantId, LeaveStatus.APPROVED);
+        long rejected = leaveRequestRepository.countByTenantIdAndStatus(tenantId, LeaveStatus.REJECTED);
         return new LeaveSummary(pending + approved + rejected, approved, pending);
     }
 

@@ -1,11 +1,11 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -67,50 +67,36 @@ type Interview = {
   status: string;
 };
 
-function usePagedData<T>(path: string, errorMessage: string) {
-  const [items, setItems] = useState<T[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get<PageResponse<T>>(path, {
-        params: { page: 0, size: 10 }
-      });
-      setItems(response.data.items ?? []);
-    } catch {
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [errorMessage, path]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
-
-  return { error, items, loading, reload: loadData };
+function usePagedData<T>(key: string, path: string, errorMessage: string) {
+  const query = useApiQuery<PageResponse<T>>(
+    ['recruitment', key],
+    path,
+    { config: { params: { page: 0, size: 10 } } }
+  );
+  return {
+    error: query.isError ? errorMessage : null,
+    items: query.data?.items ?? [],
+    loading: query.isLoading,
+  };
 }
 
 export default function RecruitmentPage() {
   const { t } = useTranslation();
   const candidates = usePagedData<Candidate>(
+    'candidates',
     API.RECRUITMENT.CANDIDATES,
     t("pages.recruitment.candidateLoadError")
   );
   const postings = usePagedData<JobPosting>(
+    'postings',
     API.RECRUITMENT.JOB_POSTINGS,
     t("pages.recruitment.postingLoadError")
   );
   const applications = usePagedData<RecruitmentApplication>(
+    'applications',
     API.RECRUITMENT.APPLICATIONS,
     t("pages.recruitment.applicationLoadError")
   );
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [editingPosting, setEditingPosting] = useState<JobPosting | null>(null);
@@ -122,51 +108,34 @@ export default function RecruitmentPage() {
   const [convertForm] = Form.useForm<{ employeeNo: string; departmentId: string }>();
   const [interviewOpen, setInterviewOpen] = useState(false);
   const [feedbackInterviewId, setFeedbackInterviewId] = useState<string | null>(null);
-  const [interviewList, setInterviewList] = useState<Interview[]>([]);
-  const [interviewLoading, setInterviewLoading] = useState(false);
 
-  const loadDepartments = useCallback(async () => {
-    try {
-      const response = await apiClient.get<PageResponse<Department>>(API.DEPARTMENTS, {
-        params: { page: 0, size: 100 }
-      });
-      setDepartments(response.data.items ?? []);
-    } catch {
-      setDepartments([]);
-    }
-  }, []);
+  const departmentsQuery = useApiQuery<PageResponse<Department>>(
+    ['recruitment', 'departments'],
+    API.DEPARTMENTS,
+    { config: { params: { page: 0, size: 100 } } }
+  );
+  const departments = departmentsQuery.data?.items ?? [];
 
-  const loadEmployees = useCallback(async () => {
-    try {
-      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
-        params: { page: 0, size: 200, status: "ACTIVE" }
-      });
-      setEmployees(response.data.items ?? []);
-    } catch {
-      setEmployees([]);
-    }
-  }, []);
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(
+    ['recruitment', 'employees'],
+    API.EMPLOYEES,
+    { config: { params: { page: 0, size: 200, status: "ACTIVE" } } }
+  );
+  const employees = employeesQuery.data?.items ?? [];
 
-  useEffect(() => {
-    void loadDepartments();
-  }, [loadDepartments]);
-  useEffect(() => {
-    void loadEmployees();
-  }, [loadEmployees]);
+  const saveMutation = useApiMutation({ invalidateKeys: [['recruitment']] });
+  const saving = saveMutation.isPending;
 
   const applicationById = useMemo(() => new Map(applications.items.map((application) => [application.id, application])), [applications.items]);
   const employeeById = useMemo(() => new Map(employees.map((employee) => [employee.id, employee])), [employees]);
 
-  const loadInterviews = useCallback(async () => {
-    setInterviewLoading(true);
-    try {
-      const res = await apiClient.get<Interview[]>(API.RECRUITMENT.INTERVIEWS);
-      setInterviewList(res.data ?? []);
-    } catch { setInterviewList([]); }
-    finally { setInterviewLoading(false); }
-  }, []);
-
-  useEffect(() => { void loadInterviews(); }, [loadInterviews]);
+  const interviewsQuery = useApiQuery<Interview[]>(
+    ['recruitment', 'interviews'],
+    API.RECRUITMENT.INTERVIEWS
+  );
+  const interviewList = interviewsQuery.data ?? [];
+  const interviewLoading = interviewsQuery.isLoading;
+  const reloadInterviews = () => interviewsQuery.refetch();
 
   const intervieweeColumns = useMemo<ColumnsType<Interview>>(() => [
     {
@@ -214,17 +183,17 @@ export default function RecruitmentPage() {
       return;
     }
 
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.put(`${API.RECRUITMENT.CANDIDATES}/${editingCandidate.id}`, { fullName: values.fullName.trim() });
+      await saveMutation.mutateAsync({
+        url: `${API.RECRUITMENT.CANDIDATES}/${editingCandidate.id}`,
+        method: "put",
+        body: { fullName: values.fullName.trim() },
+      });
       setEditingCandidate(null);
       candidateForm.resetFields();
-      await candidates.reload();
     } catch {
       setError(t("pages.recruitment.candidateUpdateError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -233,86 +202,73 @@ export default function RecruitmentPage() {
       return;
     }
 
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.put(`${API.RECRUITMENT.JOB_POSTINGS}/${editingPosting.id}`, { title: values.title.trim() });
+      await saveMutation.mutateAsync({
+        url: `${API.RECRUITMENT.JOB_POSTINGS}/${editingPosting.id}`,
+        method: "put",
+        body: { title: values.title.trim() },
+      });
       setEditingPosting(null);
       postingForm.resetFields();
-      await postings.reload();
     } catch {
       setError(t("pages.recruitment.postingUpdateError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const createCandidate = async (values: { fullName: string }) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.RECRUITMENT.CANDIDATES, { fullName: values.fullName.trim() });
+      await saveMutation.mutateAsync({
+        url: API.RECRUITMENT.CANDIDATES,
+        body: { fullName: values.fullName.trim() },
+      });
       setCreatingCandidate(false);
       candidateForm.resetFields();
-      await candidates.reload();
     } catch {
       setError(t("pages.recruitment.candidateCreateError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const deleteCandidate = async (id: string) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.delete(`${API.RECRUITMENT.CANDIDATES}/${id}`);
-      await candidates.reload();
+      await saveMutation.mutateAsync({ url: `${API.RECRUITMENT.CANDIDATES}/${id}`, method: "delete" });
     } catch {
       setError(t("pages.recruitment.candidateDeleteError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const createPosting = async (values: { title: string; description: string; departmentId: string; salaryRangeMin: number; salaryRangeMax: number; requirements: string; location: string; headcount: number }) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.RECRUITMENT.JOB_POSTINGS, values);
+      await saveMutation.mutateAsync({ url: API.RECRUITMENT.JOB_POSTINGS, body: values });
       setCreatingPosting(false);
       postingForm.resetFields();
-      await postings.reload();
     } catch {
       setError(t("pages.recruitment.postingCreateError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const deletePosting = async (id: string) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.delete(`${API.RECRUITMENT.JOB_POSTINGS}/${id}`);
-      await postings.reload();
+      await saveMutation.mutateAsync({ url: `${API.RECRUITMENT.JOB_POSTINGS}/${id}`, method: "delete" });
     } catch {
       setError(t("pages.recruitment.postingDeleteError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const changePostingStatus = async (id: string, newStatus: string) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.put(`${API.RECRUITMENT.JOB_POSTINGS}/${id}`, { status: newStatus });
-      await postings.reload();
+      await saveMutation.mutateAsync({
+        url: `${API.RECRUITMENT.JOB_POSTINGS}/${id}`,
+        method: "put",
+        body: { status: newStatus },
+      });
     } catch {
       setError(t("pages.recruitment.postingStatusError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -321,20 +277,19 @@ export default function RecruitmentPage() {
       return;
     }
 
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(`${API.RECRUITMENT.CONVERT}/${convertingApplication.id}/convert`, {
-        employeeNo: values.employeeNo.trim(),
-        departmentId: values.departmentId
+      await saveMutation.mutateAsync({
+        url: `${API.RECRUITMENT.CONVERT}/${convertingApplication.id}/convert`,
+        body: {
+          employeeNo: values.employeeNo.trim(),
+          departmentId: values.departmentId
+        },
       });
       setConvertingApplication(null);
       convertForm.resetFields();
-      await applications.reload();
     } catch {
       setError(t("pages.recruitment.convertError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -631,11 +586,11 @@ export default function RecruitmentPage() {
         </Form>
       </FormDrawer>
       <Drawer title={t("pages.recruitment.scheduleInterview")} width="min(480px, calc(100vw - 32px))" open={interviewOpen} onClose={() => setInterviewOpen(false)} destroyOnClose>
-        <InterviewScheduler open={interviewOpen} applications={applications.items} onClose={() => setInterviewOpen(false)} onSaved={() => { setInterviewOpen(false); void loadInterviews(); }} />
+        <InterviewScheduler open={interviewOpen} applications={applications.items} onClose={() => setInterviewOpen(false)} onSaved={() => { setInterviewOpen(false); void reloadInterviews(); }} />
       </Drawer>
 
       <Drawer title={t("pages.recruitment.interviewFeedback")} width="min(420px, calc(100vw - 32px))" open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} destroyOnClose>
-        <InterviewFeedback interviewId={feedbackInterviewId} open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} onSaved={() => { setFeedbackInterviewId(null); void loadInterviews(); }} />
+        <InterviewFeedback interviewId={feedbackInterviewId} open={!!feedbackInterviewId} onClose={() => setFeedbackInterviewId(null)} onSaved={() => { setFeedbackInterviewId(null); void reloadInterviews(); }} />
       </Drawer>
     </>
   );

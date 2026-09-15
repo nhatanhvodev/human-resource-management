@@ -49,6 +49,7 @@ public class Asset extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public String getName() { return name; }
     public String getCategory() { return category; }
     public String getSerialNumber() { return serialNumber; }

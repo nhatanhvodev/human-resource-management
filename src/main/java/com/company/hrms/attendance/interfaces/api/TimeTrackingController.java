@@ -3,7 +3,9 @@ package com.company.hrms.attendance.interfaces.api;
 import com.company.hrms.attendance.application.TimeTrackingService;
 import com.company.hrms.attendance.domain.TimeEntry;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import com.company.hrms.shared.security.SecurityUtils;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,22 +25,28 @@ public class TimeTrackingController {
 
     @PostMapping("/clock-in")
     @PreAuthorize("hasAuthority('attendance:create')")
-    public TimeEntryResponse clockIn(@RequestHeader("X-Employee-Id") UUID employeeId) {
+    public TimeEntryResponse clockIn(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         return toResponse(service.clockIn(employeeId));
     }
 
     @PostMapping("/clock-out")
     @PreAuthorize("hasAuthority('attendance:create')")
-    public TimeEntryResponse clockOut(@RequestHeader("X-Employee-Id") UUID employeeId) {
+    public TimeEntryResponse clockOut(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         return toResponse(service.clockOut(employeeId));
     }
 
     @GetMapping("/mine")
     @PreAuthorize("hasAuthority('attendance:read')")
-    public PageResponse<TimeEntryResponse> mine(@RequestHeader("X-Employee-Id") UUID employeeId,
+    public PageResponse<TimeEntryResponse> mine(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId,
                                                  @RequestParam(required = false) String from,
-                                                 @RequestParam(required = false) String to,
-                                                 Pageable pageable) {
+                                                  @RequestParam(required = false) String to,
+                                                  Pageable pageable) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         return PageResponse.from(service.listByEmployee(employeeId,
             from != null ? LocalDate.parse(from) : null,
             to != null ? LocalDate.parse(to) : null, pageable)
@@ -72,17 +80,21 @@ public class TimeTrackingController {
 
     @GetMapping("/timesheet")
     @PreAuthorize("hasAuthority('attendance:read')")
-    public List<TimeEntryResponse> timesheet(@RequestHeader("X-Employee-Id") UUID employeeId,
-                                              @RequestParam String weekStart) {
+    public List<TimeEntryResponse> timesheet(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId,
+                                               @RequestParam String weekStart) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         return service.timesheet(employeeId, LocalDate.parse(weekStart)).stream()
             .map(TimeTrackingController::toResponse).toList();
     }
 
     @GetMapping("/today")
     @PreAuthorize("hasAuthority('attendance:read')")
-    public TimeEntryResponse today(@RequestHeader("X-Employee-Id") UUID employeeId) {
+    public ResponseEntity<TimeEntryResponse> today(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         TimeEntry e = service.todayStatus(employeeId);
-        return e != null ? toResponse(e) : null;
+        return e != null ? ResponseEntity.ok(toResponse(e)) : ResponseEntity.notFound().build();
     }
 
     private static TimeEntryResponse toResponse(TimeEntry e) {

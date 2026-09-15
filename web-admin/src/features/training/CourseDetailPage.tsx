@@ -1,11 +1,11 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Alert, Button, Progress, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { StatusTag } from "../../shared/ui/StatusTag";
@@ -18,28 +18,26 @@ export default function CourseDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const coursesRes = await apiClient.get<PageResponse<Course>>(API.TRAINING.COURSES, { params: { page: 0, size: 100 } });
-      const found = (coursesRes.data.items ?? []).find(c => c.id === id) ?? null;
-      setCourse(found);
+  const coursesQuery = useApiQuery<PageResponse<Course>>(["training", "courses"], API.TRAINING.COURSES, {
+    config: { params: { page: 0, size: 100 } }
+  });
+  const enrollmentsQuery = useApiQuery<Enrollment[]>(
+    ["training", "enrollments", id],
+    `${API.TRAINING.ENROLLMENTS}/course/${id}`,
+    { enabled: !!id }
+  );
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(["employees", "active"], API.EMPLOYEES, {
+    config: { params: { page: 0, size: 200, status: "ACTIVE" } }
+  });
 
-      const enrollRes = await apiClient.get<Enrollment[]>(`${API.TRAINING.ENROLLMENTS}/course/${id}`);
-      setEnrollments(enrollRes.data ?? []);
-
-      const empRes = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 200, status: "ACTIVE" } });
-      setEmployees(empRes.data.items ?? []);
-    } catch {} finally { setLoading(false); }
-  }, [id]);
-
-  useEffect(() => { void load(); }, [load]);
+  const course = useMemo(
+    () => ((coursesQuery.data as PageResponse<Course> | undefined)?.items ?? []).find((c) => c.id === id) ?? null,
+    [coursesQuery.data, id]
+  );
+  const enrollments = (enrollmentsQuery.data as Enrollment[] | undefined) ?? [];
+  const employees = (employeesQuery.data as PageResponse<Employee> | undefined)?.items ?? [];
+  const loading = coursesQuery.isLoading || enrollmentsQuery.isLoading || employeesQuery.isLoading;
 
   const employeeById = useMemo(() => new Map(employees.map(e => [e.id, e])), [employees]);
 

@@ -52,5 +52,13 @@ management:
       enabled: true
 
 app:
+  security:
+    csrf-enabled: true
+    allow-dev-token: false
+    dev-token: ""
+    access-token-ttl-seconds: ${APP_ACCESS_TOKEN_TTL_SECONDS:900}
+    cookie-secure: true
+    private-key-location: ${APP_JWT_PRIVATE_KEY_LOCATION:file:/run/secrets/jwt-private.pem}
+    public-key-location: ${APP_JWT_PUBLIC_KEY_LOCATION:file:/run/secrets/jwt-public.pem}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}

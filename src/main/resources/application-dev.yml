@@ -1,4 +1,8 @@
 spring:
+  flyway:
+    # Dev also loads repeatable/versioned demo seeds from db/demo.
+    # Prod (application-prod.yml) only runs db/migration.
+    locations: classpath:db/migration,classpath:db/demo
   security:
     oauth2:
       resourceserver:

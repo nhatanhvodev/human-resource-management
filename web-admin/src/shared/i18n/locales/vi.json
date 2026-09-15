@@ -138,7 +138,8 @@
       "username": "Tên đăng nhập",
       "password": "Mật khẩu",
       "submit": "Đăng nhập",
-      "error": "Sai tên đăng nhập hoặc mật khẩu."
+      "error": "Sai tên đăng nhập hoặc mật khẩu.",
+      "invalid": "Giá trị không hợp lệ."
     }
   },
   "table": {

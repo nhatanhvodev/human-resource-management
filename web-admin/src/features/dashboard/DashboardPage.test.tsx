@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DashboardPage from "./DashboardPage";
+import { renderWithProviders } from "../../test/utils";
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn()
@@ -21,7 +22,7 @@ describe("DashboardPage", () => {
   it("renders a focused error state when the backend is offline", async () => {
     mocks.apiGet.mockRejectedValue(new Error("backend offline"));
 
-    render(<DashboardPage />);
+    renderWithProviders(<DashboardPage />);
 
     expect(await screen.findByText("Không tải được dữ liệu tổng quan")).toBeInTheDocument();
     expect(screen.getByText("Kiểm tra token, tenant và kết nối backend rồi tải lại trang.")).toBeInTheDocument();
@@ -46,7 +47,7 @@ describe("DashboardPage", () => {
       return Promise.resolve({ data: [] });
     });
 
-    render(<DashboardPage />);
+    renderWithProviders(<DashboardPage />);
 
     expect(await screen.findByText("Không có hoạt động gần đây")).toBeInTheDocument();
     expect(screen.getByText("Các sự kiện vận hành mới sẽ xuất hiện tại đây.")).toBeInTheDocument();

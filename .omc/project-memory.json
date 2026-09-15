@@ -1,0 +1,223 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1783444044644,
+  "projectRoot": "D:\\human-resource-management",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "Java",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pom.xml"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "BOOT-INF": {
+      "path": "BOOT-INF",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1783444044563,
+      "keyFiles": []
+    },
+    "docker": {
+      "path": "docker",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1783444044579,
+      "keyFiles": [
+        "compose.yml",
+        "Dockerfile"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1783444044580,
+      "keyFiles": []
+    },
+    "target": {
+      "path": "target",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1783444044581,
+      "keyFiles": [
+        "hrms-platform-0.0.1-SNAPSHOT.jar",
+        "hrms-platform-0.0.1-SNAPSHOT.jar.original"
+      ]
+    },
+    "web-admin": {
+      "path": "web-admin",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1783444044581,
+      "keyFiles": [
+        "index.html",
+        "package-lock.json",
+        "package.json",
+        "playwright.config.ts",
+        "tsconfig.json"
+      ]
+    },
+    "src\\test": {
+      "path": "src\\test",
+      "purpose": "Test files",
+      "fileCount": 0,
+      "lastAccessed": 1783444044583,
+      "keyFiles": []
+    },
+    "web-admin\\dist": {
+      "path": "web-admin\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 5,
+      "lastAccessed": 1783444044585,
+      "keyFiles": [
+        "index.html",
+        "manifest.webmanifest",
+        "registerSW.js"
+      ]
+    },
+    "web-admin\\node_modules": {
+      "path": "web-admin\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1783444044593,
+      "keyFiles": []
+    },
+    "web-admin\\src": {
+      "path": "web-admin\\src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1783444044594,
+      "keyFiles": [
+        "main.tsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/main/java/com/company/hrms/recruitment/application/RecruitmentService.java",
+      "accessCount": 5,
+      "lastAccessed": 1783474542165,
+      "type": "file"
+    },
+    {
+      "path": "src/main/java/com/company/hrms/document/application/DocumentService.java",
+      "accessCount": 5,
+      "lastAccessed": 1783474547919,
+      "type": "file"
+    },
+    {
+      "path": "src/main/java/com/company/hrms/shared/security/RbacAuthorityService.java",
+      "accessCount": 3,
+      "lastAccessed": 1783474163849,
+      "type": "file"
+    },
+    {
+      "path": "src/main/java/com/company/hrms/onboarding/application/OnboardingService.java",
+      "accessCount": 3,
+      "lastAccessed": 1783474539616,
+      "type": "file"
+    },
+    {
+      "path": "src/main/java/com/company/hrms/attendance/application/AttendanceService.java",
+      "accessCount": 3,
+      "lastAccessed": 1783474542961,
+      "type": "file"
+    },
+    {
+      "path": "C:/Users/nhata/AppData/Local/Temp/claude/D--human-resource-management/b57470dd-6782-4e6d-81c8-cb0b99641acd/tasks/bd01q7mle.output",
+      "accessCount": 2,
+      "lastAccessed": 1783445012291,
+      "type": "file"
+    },
+    {
+      "path": "web-admin/src/features/auth/LoginPage.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1783474216762,
+      "type": "file"
+    },
+    {
+      "path": "src/main/resources/application.yml",
+      "accessCount": 1,
+      "lastAccessed": 1783444194410,
+      "type": "file"
+    },
+    {
+      "path": "C:/Users/nhata/AppData/Local/Temp/claude/D--human-resource-management/b57470dd-6782-4e6d-81c8-cb0b99641acd/tasks/b2fyfi44j.output",
+      "accessCount": 1,
+      "lastAccessed": 1783444601898,
+      "type": "file"
+    },
+    {
+      "path": "C:/Users/nhata/AppData/Local/Temp/claude/D--human-resource-management/b57470dd-6782-4e6d-81c8-cb0b99641acd/tasks/buo7iodqh.output",
+      "accessCount": 1,
+      "lastAccessed": 1783444964154,
+      "type": "file"
+    },
+    {
+      "path": "src/main/resources/db/migration/V33__app_user_passwords.sql",
+      "accessCount": 1,
+      "lastAccessed": 1783445609277,
+      "type": "file"
+    },
+    {
+      "path": "src/main/resources/db/migration/V36__complete_demo_accounts_and_realistic_hr_data.sql",
+      "accessCount": 1,
+      "lastAccessed": 1783445667059,
+      "type": "file"
+    },
+    {
+      "path": "src/main/java/com/company/hrms/integration/application/NotificationService.java",
+      "accessCount": 1,
+      "lastAccessed": 1783473777604,
+      "type": "file"
+    },
+    {
+      "path": "src/main/java/com/company/hrms/reporting/application/DashboardQueryService.java",
+      "accessCount": 1,
+      "lastAccessed": 1783474447932,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

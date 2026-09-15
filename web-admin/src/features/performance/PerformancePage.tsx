@@ -1,10 +1,15 @@
 import { Alert, Descriptions, Drawer, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
+import type { UseQueryResult } from "@tanstack/react-query";
+
 import { API } from "../../shared/api/endpoints";
+// NOTE: `as UseQueryResult<...>` restores useApiQuery's documented return type, which currently
+// degrades under the installed @tanstack/react-query 5.102.8 (overload error inside query.ts).
+// The cast is type-only and has zero runtime effect.
+import { useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { StatusTag } from "../../shared/ui/StatusTag";
@@ -44,49 +49,35 @@ type KPI = {
 export default function PerformancePage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("cycles");
-  const [cycles, setCycles] = useState<AppraisalCycle[]>([]);
-  const [reviews, setReviews] = useState<PerformanceReview[]>([]);
-  const [kpis, setKpis] = useState<KPI[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<AppraisalCycle | null>(null);
   const [openReviews, setOpenReviews] = useState(false);
-  const [loadingReviews, setLoadingReviews] = useState(false);
 
-  const loadCycles = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get<PageResponse<AppraisalCycle>>(API.PERFORMANCE.CYCLES, {
-        params: { page: 0, size: 20 }
-      });
-      setCycles(res.data.items ?? []);
-    } catch {
-      setError(t("pages.performance.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const cyclesQuery = useApiQuery<PageResponse<AppraisalCycle>>(["performance", "cycles"], API.PERFORMANCE.CYCLES, {
+    config: { params: { page: 0, size: 20 } }
+  }) as UseQueryResult<PageResponse<AppraisalCycle>, unknown>;
+  // Detail queries run on demand when the drawer opens (enabled on selection),
+  // replacing the manual fetch previously issued inside openCycleReviews.
+  const reviewsQuery = useApiQuery<PageResponse<PerformanceReview>>(
+    ["performance", "reviews", selectedCycle?.id],
+    selectedCycle ? `${API.PERFORMANCE.CYCLES}/${selectedCycle.id}/reviews` : API.PERFORMANCE.CYCLES,
+    { config: { params: { page: 0, size: 200 } }, enabled: !!selectedCycle }
+  ) as UseQueryResult<PageResponse<PerformanceReview>, unknown>;
+  const kpisQuery = useApiQuery<PageResponse<KPI>>(
+    ["performance", "kpis", selectedCycle?.id],
+    selectedCycle ? `${API.PERFORMANCE.CYCLES}/${selectedCycle.id}/kpis` : API.PERFORMANCE.CYCLES,
+    { config: { params: { page: 0, size: 500 } }, enabled: !!selectedCycle }
+  ) as UseQueryResult<PageResponse<KPI>, unknown>;
 
-  useEffect(() => { void loadCycles(); }, [loadCycles]);
+  const cycles = cyclesQuery.data?.items ?? [];
+  const loading = cyclesQuery.isLoading;
+  const error = cyclesQuery.isError ? t("pages.performance.loadError") : null;
+  const reviews = reviewsQuery.data?.items ?? [];
+  const kpis = kpisQuery.data?.items ?? [];
+  const loadingReviews = reviewsQuery.isFetching || kpisQuery.isFetching;
 
-  const openCycleReviews = async (cycle: AppraisalCycle) => {
+  const openCycleReviews = (cycle: AppraisalCycle) => {
     setSelectedCycle(cycle);
     setOpenReviews(true);
-    setLoadingReviews(true);
-    try {
-      const [revRes, kpiRes] = await Promise.all([
-        apiClient.get<PageResponse<PerformanceReview>>(`${API.PERFORMANCE.CYCLES}/${cycle.id}/reviews`, { params: { page: 0, size: 200 } }),
-        apiClient.get<PageResponse<KPI>>(`${API.PERFORMANCE.CYCLES}/${cycle.id}/kpis`, { params: { page: 0, size: 500 } })
-      ]);
-      setReviews(revRes.data.items ?? []);
-      setKpis(kpiRes.data.items ?? []);
-    } catch {
-      setReviews([]);
-      setKpis([]);
-    } finally {
-      setLoadingReviews(false);
-    }
   };
 
   const cycleColumns: ColumnsType<AppraisalCycle> = [

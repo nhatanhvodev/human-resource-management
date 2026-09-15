@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { apiClient } from "../api/client";
+import { apiClient, trySilentRefresh } from "../api/client";
 import { DEV_SETTINGS_CHANGED, loadDevSettings } from "../config/devSettingsStore";
 
 type AccessSnapshot = {
@@ -41,10 +41,16 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
   const loadAccess = useCallback(async () => {
     const settings = loadDevSettings();
     if (!settings.token.trim()) {
-      setAccess(EMPTY_ACCESS);
-      setError(false);
-      setLoading(false);
-      return EMPTY_ACCESS;
+      // P3: no in-memory/persisted token — try the httpOnly refresh cookie
+      // once (survives reloads without localStorage) before giving up.
+      try {
+        await trySilentRefresh();
+      } catch {
+        setAccess(EMPTY_ACCESS);
+        setError(false);
+        setLoading(false);
+        return EMPTY_ACCESS;
+      }
     }
 
     setLoading(true);

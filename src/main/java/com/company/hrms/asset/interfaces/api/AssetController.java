@@ -3,6 +3,7 @@ package com.company.hrms.asset.interfaces.api;
 import com.company.hrms.asset.application.AssetService;
 import com.company.hrms.asset.domain.Asset;
 import com.company.hrms.shared.interfaces.api.PageResponse;
+import com.company.hrms.shared.security.SecurityUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +37,9 @@ public class AssetController {
 
     @GetMapping("/mine")
     @PreAuthorize("hasAuthority('self:access')")
-    public List<AssetResponse> mine(@RequestHeader("X-Employee-Id") UUID employeeId) {
+    public List<AssetResponse> mine(
+            @RequestHeader(value = "X-Employee-Id", required = false) UUID headerEmployeeId) {
+        UUID employeeId = SecurityUtils.resolveSelfEmployeeId(headerEmployeeId);
         return service.listByEmployee(employeeId).stream().map(AssetController::toResponse).toList();
     }
 

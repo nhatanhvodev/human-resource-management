@@ -1,0 +1,7 @@
+{
+  "tool_name": "PowerShell",
+  "tool_input_preview": "{\"command\":\"Start-Process -FilePath \\\"npm\\\" -ArgumentList \\\"run\\\",\\\"dev\\\" -WorkingDirectory \\\"D:\\\\human-resource-management\\\\web-admin\\\" -NoNewWindow -PassThru | Select-Object Id\",\"timeout\":15000,\"des...",
+  "error": "Exit code 1\nStart-Process : This command cannot be run due to the error: %1 is not a valid Win32 application.\r\nAt line:1 char:1\r\n+ Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -WorkingDirec ...\r\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : InvalidOperation: (:) [Start-Process], InvalidOperationException\r\n    + FullyQualifiedErrorId : InvalidOperationException,Microsoft.PowerShell.Commands.StartProcessCommand",
+  "timestamp": "2026-07-07T17:21:09.680Z",
+  "retry_count": 1
+}

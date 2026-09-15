@@ -15,7 +15,16 @@ spring:
   jackson:
     time-zone: UTC
 app:
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
   security:
+    dev-token: local-test-token
+    allow-dev-token: true
+    csrf-enabled: false
+    access-token-ttl-seconds: 900
+    cookie-secure: false
+    private-key-location: ${APP_JWT_PRIVATE_KEY_LOCATION:classpath:keys/dev-private.pem}
+    public-key-location: ${APP_JWT_PUBLIC_KEY_LOCATION:classpath:keys/dev-public.pem}
     admin-authorities: dashboard:read,department:read,department:create,department:update,department:delete,employee:read,employee:create,employee:update,employee:delete,leave:read,leave:create,leave:approve,payroll:read,payroll:create,payroll:execute,payroll:approve,recruitment:read,recruitment:create,recruitment:update,recruitment:convert,performance:read,performance:create,performance:update,attendance:read,attendance:create,attendance:approve,document:read,document:create,document:delete,notification:create,announcement:read,announcement:create,announcement:delete,onboarding:read,onboarding:create,onboarding:update,onboarding:delete,training:read,training:create,training:update,asset:read,asset:create,asset:update,asset:delete,audit:read,authz:read,authz:update,self:access
 
 management:

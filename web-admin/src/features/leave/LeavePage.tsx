@@ -1,11 +1,17 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+// NOTE: `as UseQueryResult<...>` restores useApiQuery's documented return type, which currently
+// degrades under the installed @tanstack/react-query 5.102.8 (overload error inside query.ts).
+// The cast is type-only and has zero runtime effect.
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -53,57 +59,36 @@ type Holiday = {
 
 export default function LeavePage() {
   const { t } = useTranslation();
-  const [items, setItems] = useState<LeaveRequest[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [activeTab, setActiveTab] = useState("requests");
+  const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm<{ employeeId: string; fromDate: string; toDate: string; leaveType: string; reason: string }>();
 
-  // --- Leave balances state ---
-  const [balances, setBalances] = useState<LeaveBalance[]>([]);
-  const [balancesLoading, setBalancesLoading] = useState(false);
+  const leaveRequestsQuery = useApiQuery<PageResponse<LeaveRequest>>(["leave", "requests"], API.LEAVE_REQUESTS, {
+    config: { params: { page: 0, size: 10 } }
+  }) as UseQueryResult<PageResponse<LeaveRequest>, unknown>;
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(["leave", "employees"], API.EMPLOYEES, {
+    config: { params: { page: 0, size: 100, status: "ACTIVE" } }
+  }) as UseQueryResult<PageResponse<Employee>, unknown>;
+  const holidaysQuery = useApiQuery<Holiday[]>(["leave", "holidays"], API.HOLIDAYS) as UseQueryResult<Holiday[], unknown>;
 
-  // --- Holidays state ---
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [holidaysLoading, setHolidaysLoading] = useState(false);
+  const items = leaveRequestsQuery.data?.items ?? [];
+  const loading = leaveRequestsQuery.isLoading;
+  const loadError = leaveRequestsQuery.isError ? t("pages.leave.loadError") : null;
+  const visibleError = error ?? loadError;
+  const employees = employeesQuery.data?.items ?? [];
+  const holidays = holidaysQuery.data ?? [];
+  const holidaysLoading = holidaysQuery.isLoading;
 
-  const loadLeaveRequests = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get<PageResponse<LeaveRequest>>(API.LEAVE_REQUESTS, {
-        params: { page: 0, size: 10 }
-      });
-      setItems(response.data.items ?? []);
-    } catch {
-      setError(t("pages.leave.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  const loadEmployees = useCallback(async () => {
-    try {
-      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
-        params: { page: 0, size: 100, status: "ACTIVE" }
-      });
-      const nextEmployees = response.data.items ?? [];
-      setEmployees(nextEmployees);
-      return nextEmployees;
-    } catch {
-      setEmployees([]);
-      return [];
-    }
-  }, []);
-
-  const loadLeaveBalances = useCallback(async (sourceEmployees: Employee[]) => {
-    setBalancesLoading(true);
-    try {
+  // Per-employee fan-out can't be expressed as a single GET for useApiQuery,
+  // so this composite query uses useQuery directly (still via apiClient).
+  const employeeIdsKey = employees.map((employee) => employee.id).join(",");
+  const balancesQuery = useQuery<LeaveBalance[]>({
+    queryKey: ["leave", "balances", employeeIdsKey],
+    enabled: employees.length > 0,
+    queryFn: async () => {
       const responses = await Promise.all(
-        sourceEmployees.slice(0, 50).map(async (employee) => {
+        employees.slice(0, 50).map(async (employee) => {
           const response = await apiClient.get<LeaveBalance[]>(API.LEAVE_BALANCES, {
             params: { employeeId: employee.id }
           });
@@ -113,68 +98,39 @@ export default function LeavePage() {
           }));
         })
       );
-      setBalances(responses.flat());
-    } catch {
-      setBalances([]);
-    } finally {
-      setBalancesLoading(false);
+      return responses.flat();
     }
-  }, []);
+  });
+  const balances = balancesQuery.data ?? [];
+  const balancesLoading = balancesQuery.isLoading;
 
-  const loadHolidays = useCallback(async () => {
-    setHolidaysLoading(true);
-    try {
-      const response = await apiClient.get<Holiday[]>(API.HOLIDAYS);
-      setHolidays(response.data ?? []);
-    } catch {
-      setHolidays([]);
-    } finally {
-      setHolidaysLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadLeaveRequests();
-  }, [loadLeaveRequests]);
-
-  useEffect(() => {
-    void loadEmployees().then((nextEmployees) => loadLeaveBalances(nextEmployees));
-  }, [loadEmployees, loadLeaveBalances]);
-
-  useEffect(() => {
-    void loadHolidays();
-  }, [loadHolidays]);
+  const createMutation = useApiMutation<LeaveRequest, { employeeId: string; fromDate: string; toDate: string; leaveType: string; reason: string }>({
+    invalidateKeys: [["leave", "requests"]]
+  });
+  const transitionMutation = useApiMutation({
+    invalidateKeys: [["leave", "requests"], ["leave", "employees"], ["leave", "balances"]]
+  });
+  const saving = createMutation.isPending || transitionMutation.isPending;
 
   const employeeById = useMemo(() => new Map(employees.map((employee) => [employee.id, employee])), [employees]);
 
   const createLeaveRequest = async (values: { employeeId: string; fromDate: string; toDate: string; leaveType: string; reason: string }) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.LEAVE_REQUESTS, values);
+      await createMutation.mutateAsync({ url: API.LEAVE_REQUESTS, body: values });
       form.resetFields();
       setOpenCreate(false);
-      await loadLeaveRequests();
     } catch {
       setError(t("pages.leave.createError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const transitionLeaveRequest = async (id: string, action: "approve" | "reject") => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(`${API.LEAVE_REQUESTS}/${id}/${action}`);
-      await loadLeaveRequests();
-      // Reload leave balances after approval/rejection
-      const nextEmployees = await loadEmployees();
-      await loadLeaveBalances(nextEmployees);
+      await transitionMutation.mutateAsync({ url: `${API.LEAVE_REQUESTS}/${id}/${action}`, body: null });
     } catch {
       setError(action === "approve" ? t("pages.leave.approveError") : t("pages.leave.rejectError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -316,7 +272,7 @@ export default function LeavePage() {
             </Button>
           </PageToolbar>
 
-          {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+          {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
 
           <AppTable<LeaveRequest>
             rowKey="id"

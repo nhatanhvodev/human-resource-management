@@ -1,68 +1,47 @@
 import { Card, Col, Row, Statistic, Typography } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { apiClient } from '../../shared/api/client';
+import { API } from '../../shared/api/endpoints';
+import { asArray, useApiQuery } from '../../shared/api/query';
+import type { PageResponse } from '../../shared/api/types';
+import { useAccess } from '../../shared/auth/access';
 
 const { Title } = Typography;
 
+type LeaveBalance = { leaveType: string; totalDays: number; usedDays: number; pendingDays: number };
+type TimeEntry = { id: string; date: string; totalMinutes: number };
+type Enrollment = { id: string; status: string };
+
 export default function EssDashboardPage() {
   const { t } = useTranslation();
-  const [workdays, setWorkdays] = useState<number | null>(null);
-  const [remainingLeave, setRemainingLeave] = useState<number | null>(null);
-  const [coursesInProgress, setCoursesInProgress] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { access } = useAccess();
+  const empId = access?.employeeId ?? '';
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Get today's time entry for work status
-      const timeRes = await apiClient.get('/self/time-entries/today', {
-        headers: { 'X-Employee-Id': 'self' }
-      }).catch(() => null);
+  const leaveQuery = useApiQuery<LeaveBalance[]>(['self', 'leave-balances'], API.SELF.LEAVE_BALANCES);
+  const timeQuery = useApiQuery<PageResponse<TimeEntry>>(
+    ['self', 'time-entries', 'recent'],
+    API.SELF.TIME_ENTRIES,
+    { config: { params: { page: 0, size: 100 } } }
+  );
+  const enrollQuery = useApiQuery<Enrollment[]>(
+    ['self', 'enrollments', empId],
+    `/training/enrollments/employee/${empId}`,
+    { enabled: Boolean(empId) }
+  );
 
-      // Get leave balances
-      const leaveRes = await apiClient.get('/self/leave-balances', {
-        headers: { 'X-Employee-Id': 'self' }
-      }).catch(() => null);
+  const loading = leaveQuery.isLoading || timeQuery.isLoading || enrollQuery.isLoading;
 
-      // Get training enrollments
-      const enrollRes = await apiClient.get('/training/enrollments/employee/self', {
-        headers: { 'X-Employee-Id': 'self' }
-      }).catch(() => null);
+  const balances = asArray<LeaveBalance>(leaveQuery.data);
+  const remainingLeave = balances.reduce(
+    (sum, b) => sum + (Number(b.totalDays ?? 0) - Number(b.usedDays ?? 0) - Number(b.pendingDays ?? 0)),
+    0
+  );
 
-      // Parse workdays from time entry
-      if (timeRes?.data) {
-        const data = timeRes.data as any;
-        setWorkdays(data.workdaysThisMonth ?? data.workedDays ?? null);
-      }
+  const monthPrefix = new Date().toISOString().slice(0, 7);
+  const workdays = (timeQuery.data?.items ?? []).filter((e) => e.date?.startsWith(monthPrefix)).length;
 
-      // Parse remaining leave from balances
-      if (leaveRes?.data) {
-        const balances = Array.isArray(leaveRes.data) ? leaveRes.data : [];
-        const totalRemaining = balances.reduce(
-          (sum: number, b: any) => sum + ((b.totalDays ?? 0) - (b.usedDays ?? 0) - (b.pendingDays ?? 0)),
-          0
-        );
-        setRemainingLeave(totalRemaining);
-      }
-
-      // Count in-progress courses
-      if (enrollRes?.data) {
-        const enrollments = Array.isArray(enrollRes.data) ? enrollRes.data : [];
-        const inProgress = enrollments.filter((e: any) => e.status === 'IN_PROGRESS').length;
-        setCoursesInProgress(inProgress);
-      }
-    } catch {
-      // Silently fail - dashboard shows fallback values
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  const enrollments = asArray<Enrollment>(enrollQuery.data);
+  const coursesInProgress = enrollments.filter((e) => e.status === 'IN_PROGRESS').length;
 
   return (
     <div>
@@ -70,21 +49,21 @@ export default function EssDashboardPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
-            <Statistic title={t('ess.workdaysThisMonth')} value={workdays ?? '—'} suffix="/ 26" />
+            <Statistic title={t('ess.workdaysThisMonth')} value={workdays} suffix="/ 26" />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
             <Statistic
               title={t('ess.remainingLeave')}
-              value={remainingLeave ?? '—'}
+              value={remainingLeave}
               valueStyle={{ color: '#3f8600' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
           <Card loading={loading}>
-            <Statistic title={t('ess.coursesInProgress')} value={coursesInProgress ?? '—'} />
+            <Statistic title={t('ess.coursesInProgress')} value={coursesInProgress} />
           </Card>
         </Col>
       </Row>

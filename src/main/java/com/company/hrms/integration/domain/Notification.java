@@ -55,6 +55,7 @@ public class Notification extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public UUID getRecipientId() { return recipientId; }
     public String getTitle() { return title; }
     public String getBody() { return body; }

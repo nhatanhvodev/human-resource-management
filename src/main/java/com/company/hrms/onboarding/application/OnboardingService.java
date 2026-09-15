@@ -42,7 +42,9 @@ public class OnboardingService {
 
     @Transactional
     public OnboardingTask completeTask(UUID taskId) {
+        String tenantId = TenantContext.get();
         OnboardingTask task = taskRepository.findById(taskId)
+            .filter(t -> tenantId.equals(t.getTenantId()))
             .orElseThrow(() -> new NotFoundException("Onboarding task not found: " + taskId));
         task.complete();
         return taskRepository.save(task);
@@ -71,6 +73,10 @@ public class OnboardingService {
 
     @Transactional
     public void deleteTemplate(UUID templateId) {
-        templateRepository.deleteById(templateId);
+        String tenantId = TenantContext.get();
+        OnboardingTemplate template = templateRepository.findById(templateId)
+            .filter(t -> tenantId.equals(t.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("Template not found: " + templateId));
+        templateRepository.delete(template);
     }
 }

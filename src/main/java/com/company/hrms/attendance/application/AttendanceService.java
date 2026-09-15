@@ -4,15 +4,14 @@ import com.company.hrms.attendance.domain.*;
 import com.company.hrms.attendance.infrastructure.*;
 import com.company.hrms.employee.domain.Employee;
 import com.company.hrms.employee.infrastructure.EmployeeRepository;
+import com.company.hrms.integration.application.NotificationService;
 import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
+import com.company.hrms.shared.security.SecurityUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,19 +28,22 @@ public class AttendanceService {
     private final OvertimeRecordRepository overtimeRecordRepository;
     private final EmployeeRepository employeeRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final NotificationService notificationService;
 
     public AttendanceService(LeaveRequestRepository leaveRequestRepository,
                              LeaveBalanceRepository leaveBalanceRepository,
                              HolidayRepository holidayRepository,
                              OvertimeRecordRepository overtimeRecordRepository,
                              EmployeeRepository employeeRepository,
-                             JdbcTemplate jdbcTemplate) {
+                             JdbcTemplate jdbcTemplate,
+                             NotificationService notificationService) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
         this.holidayRepository = holidayRepository;
         this.overtimeRecordRepository = overtimeRecordRepository;
         this.employeeRepository = employeeRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -64,21 +66,29 @@ public class AttendanceService {
         if (currentEmployeeId != null) {
             assertCanManage(TenantContext.get(), currentEmployeeId, leaveRequest.getEmployeeId());
         }
-        leaveRequest.approve();
-        leaveRequest.setApprovedBy(currentEmployeeId);
+        leaveRequest.approve(currentEmployeeId);
         long days = leaveRequest.getToDate().toEpochDay() - leaveRequest.getFromDate().toEpochDay() + 1;
         updateLeaveBalance(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType(),
             leaveRequest.getFromDate().getYear(), days, false, true);
+        notificationService.create(leaveRequest.getEmployeeId(),
+            "Leave Request Approved",
+            "Your " + leaveRequest.getLeaveType() + " leave (" + leaveRequest.getFromDate() + " to " + leaveRequest.getToDate() + ") has been approved.",
+            "LEAVE_APPROVED", leaveRequest.getId().toString(), null, null);
         return leaveRequest;
     }
 
     @Transactional
     public LeaveRequest reject(UUID leaveId) {
         LeaveRequest leaveRequest = findLeaveByIdScoped(leaveId);
-        leaveRequest.reject();
+        UUID currentEmployeeId = getCurrentEmployeeId();
+        leaveRequest.reject(currentEmployeeId);
         long days = leaveRequest.getToDate().toEpochDay() - leaveRequest.getFromDate().toEpochDay() + 1;
         updateLeaveBalance(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType(),
             leaveRequest.getFromDate().getYear(), days, false, false);
+        notificationService.create(leaveRequest.getEmployeeId(),
+            "Leave Request Rejected",
+            "Your " + leaveRequest.getLeaveType() + " leave (" + leaveRequest.getFromDate() + " to " + leaveRequest.getToDate() + ") has been rejected.",
+            "LEAVE_REJECTED", leaveRequest.getId().toString(), null, null);
         return leaveRequest;
     }
 
@@ -117,6 +127,10 @@ public class AttendanceService {
         OvertimeRecord record = overtimeRecordRepository.findById(overtimeId)
             .orElseThrow(() -> new NotFoundException("OVERTIME_NOT_FOUND"));
         record.approve();
+        notificationService.create(record.getEmployeeId(),
+            "Overtime Approved",
+            "Your overtime request for " + record.getDate() + " has been approved.",
+            "OVERTIME_APPROVED", record.getId().toString(), null, null);
         return record;
     }
 
@@ -125,12 +139,16 @@ public class AttendanceService {
         OvertimeRecord record = overtimeRecordRepository.findById(overtimeId)
             .orElseThrow(() -> new NotFoundException("OVERTIME_NOT_FOUND"));
         record.reject();
+        notificationService.create(record.getEmployeeId(),
+            "Overtime Rejected",
+            "Your overtime request for " + record.getDate() + " has been rejected.",
+            "OVERTIME_REJECTED", record.getId().toString(), null, null);
         return record;
     }
 
     private void assertCanManage(String tenantId, UUID managerId, UUID employeeId) {
-        Employee target = employeeRepository.findByIdAndTenantId(employeeId, tenantId).orElse(null);
-        if (target == null) return;
+        Employee target = employeeRepository.findByIdAndTenantId(employeeId, tenantId)
+            .orElseThrow(() -> new AccessDeniedException("EMPLOYEE_NOT_FOUND"));
         boolean isDirectManager = target.getManagerId() != null && target.getManagerId().equals(managerId);
         if (isDirectManager) return;
         List<UUID> scopedDeptIds = jdbcTemplate.queryForList(
@@ -142,12 +160,7 @@ public class AttendanceService {
     }
 
     private UUID getCurrentEmployeeId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            String empId = jwtAuth.getToken().getClaimAsString("employee_id");
-            if (empId != null) return UUID.fromString(empId);
-        }
-        return null;
+        return SecurityUtils.getCurrentEmployeeId().orElse(null);
     }
 
     private LeaveRequest findLeaveByIdScoped(UUID leaveId) {

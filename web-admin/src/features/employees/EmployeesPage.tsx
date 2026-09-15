@@ -2,11 +2,11 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Descriptions, Drawer, Form, Input, message, Popconfirm, Segmented, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { TablePaginationConfig } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { asArray, useApiMutation, useApiQuery } from "../../shared/api/query";
 import { hasAuthority } from "../../shared/auth/jwt";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
@@ -82,22 +82,11 @@ export default function EmployeesPage() {
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
-  const [data, setData] = useState<PageResponse<Employee>>(emptyPage);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [managerSaving, setManagerSaving] = useState(false);
-  const [managerEmployeeId, setManagerEmployeeId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [detailContracts, setDetailContracts] = useState<EmployeeContract[]>([]);
-  const [detailSkills, setDetailSkills] = useState<EmployeeSkill[]>([]);
-  const [detailEmergencyContacts, setDetailEmergencyContacts] = useState<EmergencyContact[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [managerEmployeeId, setManagerEmployeeId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm<{
     employeeNo: string;
     fullName: string;
@@ -114,86 +103,62 @@ export default function EmployeesPage() {
     positionId?: string;
   }>();
 
-  const loadEmployees = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, {
-        params: { page, size: pageSize, status: status === "ALL" ? undefined : status }
-      });
-      setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
-    } catch {
-      setData(emptyPage);
-      setError(t("pages.employees.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, status, t]);
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(
+    ['employees', page, pageSize, status],
+    API.EMPLOYEES,
+    { config: { params: { page, size: pageSize, status: status === "ALL" ? undefined : status } } }
+  );
+  const data: PageResponse<Employee> = { ...emptyPage, ...employeesQuery.data, items: employeesQuery.data?.items ?? [] };
 
-  const loadDepartments = useCallback(async () => {
-    try {
-      const response = await apiClient.get<PageResponse<Department>>(API.DEPARTMENTS, {
-        params: { page: 0, size: 100 }
-      });
-      setDepartments(response.data.items ?? []);
-    } catch {
-      setDepartments([]);
-    }
-  }, []);
+  const departmentsQuery = useApiQuery<PageResponse<Department>>(
+    ['departments', 'lookup'],
+    API.DEPARTMENTS,
+    { config: { params: { page: 0, size: 100 } } }
+  );
+  const departments = departmentsQuery.data?.items ?? [];
 
-  const loadPositions = useCallback(async () => {
-    try {
-      const response = await apiClient.get<PageResponse<Position>>(API.POSITIONS, {
-        params: { page: 0, size: 500 }
-      });
-      setPositions(response.data.items ?? []);
-    } catch {
-      setPositions([]);
-    }
-  }, []);
+  const positionsQuery = useApiQuery<PageResponse<Position>>(
+    ['positions', 'lookup'],
+    API.POSITIONS,
+    { config: { params: { page: 0, size: 500 } } }
+  );
+  const positions = positionsQuery.data?.items ?? [];
 
-  const loadEmployeeDetail = useCallback(async (id: string) => {
-    setDetailLoading(true);
-    try {
-      const [contractsRes, skillsRes, contactsRes] = await Promise.allSettled([
-        apiClient.get<PageResponse<EmployeeContract>>(`${API.EMPLOYEES}/${id}/contracts`, { params: { page: 0, size: 50 } }),
-        apiClient.get<PageResponse<EmployeeSkill>>(`${API.EMPLOYEES}/${id}/skills`, { params: { page: 0, size: 50 } }),
-        apiClient.get<PageResponse<EmergencyContact>>(`${API.EMPLOYEES}/${id}/emergency-contacts`, { params: { page: 0, size: 50 } })
-      ]);
-      setDetailContracts(contractsRes.status === "fulfilled" ? (contractsRes.value.data.items ?? []) : []);
-      setDetailSkills(skillsRes.status === "fulfilled" ? (skillsRes.value.data.items ?? []) : []);
-      setDetailEmergencyContacts(contactsRes.status === "fulfilled" ? (contactsRes.value.data.items ?? []) : []);
-    } catch {
-      setDetailContracts([]);
-      setDetailSkills([]);
-      setDetailEmergencyContacts([]);
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
+  const detailId = detailEmployee?.id;
+  const contractsQuery = useApiQuery<PageResponse<EmployeeContract>>(
+    ['employees', detailId, 'contracts'],
+    `${API.EMPLOYEES}/${detailId}/contracts`,
+    { enabled: Boolean(detailId), config: { params: { page: 0, size: 50 } } }
+  );
+  const skillsQuery = useApiQuery<PageResponse<EmployeeSkill>>(
+    ['employees', detailId, 'skills'],
+    `${API.EMPLOYEES}/${detailId}/skills`,
+    { enabled: Boolean(detailId), config: { params: { page: 0, size: 50 } } }
+  );
+  const contactsQuery = useApiQuery<PageResponse<EmergencyContact>>(
+    ['employees', detailId, 'emergency-contacts'],
+    `${API.EMPLOYEES}/${detailId}/emergency-contacts`,
+    { enabled: Boolean(detailId), config: { params: { page: 0, size: 50 } } }
+  );
+  const detailContracts = detailId ? asArray<EmployeeContract>(contractsQuery.data?.items) : [];
+  const detailSkills = detailId ? asArray<EmployeeSkill>(skillsQuery.data?.items) : [];
+  const detailEmergencyContacts = detailId ? asArray<EmergencyContact>(contactsQuery.data?.items) : [];
+  const detailLoading = Boolean(detailId) && (contractsQuery.isLoading || skillsQuery.isLoading || contactsQuery.isLoading);
 
-  useEffect(() => {
-    void loadEmployees();
-  }, [loadEmployees]);
-
-  useEffect(() => {
-    void loadDepartments();
-  }, [loadDepartments]);
-
-  useEffect(() => {
-    void loadPositions();
-  }, [loadPositions]);
+  const saveMutation = useApiMutation({ invalidateKeys: [['employees']] });
+  const statusMutation = useApiMutation({ invalidateKeys: [['employees']] });
+  const deleteMutation = useApiMutation({ invalidateKeys: [['employees']] });
+  const managerMutation = useApiMutation();
+  const loading = employeesQuery.isLoading;
+  const saving = saveMutation.isPending || statusMutation.isPending;
+  const deleting = deleteMutation.isPending;
+  const managerSaving = managerMutation.isPending;
 
   useEffect(() => {
     if (detailEmployee) {
       setManagerEmployeeId(detailEmployee.managerId ?? null);
-      void loadEmployeeDetail(detailEmployee.id);
-    } else {
-      setDetailContracts([]);
-      setDetailSkills([]);
-      setDetailEmergencyContacts([]);
     }
-  }, [detailEmployee, loadEmployeeDetail]);
+  }, [detailEmployee]);
 
   const departmentById = useMemo(() => new Map(departments.map((department) => [department.id, department])), [departments]);
 
@@ -212,7 +177,6 @@ export default function EmployeesPage() {
     taxCode?: string;
     positionId?: string;
   }) => {
-    setSaving(true);
     setError(null);
     try {
       const profilePayload = {
@@ -230,27 +194,31 @@ export default function EmployeesPage() {
         ...(values.positionId ? { positionId: values.positionId } : {})
       };
       if (editingEmployee) {
-        await apiClient.put(`${API.EMPLOYEES}/${editingEmployee.id}/profile`, profilePayload);
+        await saveMutation.mutateAsync({
+          url: `${API.EMPLOYEES}/${editingEmployee.id}/profile`,
+          method: "put",
+          body: profilePayload,
+        });
       } else {
-        await apiClient.post(API.EMPLOYEES, {
-          employeeNo: values.employeeNo?.trim(),
-          fullName: profilePayload.fullName,
-          departmentId: profilePayload.departmentId,
-          hireDate: profilePayload.hireDate
+        await saveMutation.mutateAsync({
+          url: API.EMPLOYEES,
+          body: {
+            employeeNo: values.employeeNo?.trim(),
+            fullName: profilePayload.fullName,
+            departmentId: profilePayload.departmentId,
+            hireDate: profilePayload.hireDate
+          },
         });
       }
       form.resetFields();
       setOpenCreate(false);
       setEditingEmployee(null);
-      await loadEmployees();
     } catch {
       setError(
         editingEmployee
           ? t("pages.employees.updateError")
           : t("pages.employees.createError")
       );
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -282,37 +250,36 @@ export default function EmployeesPage() {
 
   const changeEmployeeStatus = async (employee: Employee) => {
     const nextStatus = employee.employmentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.patch(`${API.EMPLOYEES}/${employee.id}/status`, { employmentStatus: nextStatus });
-      await loadEmployees();
+      await statusMutation.mutateAsync({
+        url: `${API.EMPLOYEES}/${employee.id}/status`,
+        method: "patch",
+        body: { employmentStatus: nextStatus },
+      });
     } catch {
       setError(t("pages.employees.statusError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const deleteEmployee = async (id: string) => {
-    setDeleting(true);
     setError(null);
     try {
-      await apiClient.delete(`${API.EMPLOYEES}/${id}`);
-      await loadEmployees();
+      await deleteMutation.mutateAsync({ url: `${API.EMPLOYEES}/${id}`, method: "delete" });
       message.success(t("pages.employees.deleteSuccess"));
     } catch {
       setError(t("pages.employees.deleteError"));
-    } finally {
-      setDeleting(false);
     }
   };
 
   const assignManager = async (employeeId: string, managerId: string | null) => {
     if (!managerId) return;
-    setManagerSaving(true);
     try {
-      await apiClient.put(`${API.EMPLOYEES}/${employeeId}/manager`, { managerId });
+      await managerMutation.mutateAsync({
+        url: `${API.EMPLOYEES}/${employeeId}/manager`,
+        method: "put",
+        body: { managerId },
+      });
       message.success(t("pages.employees.managerAssigned"));
       // Update local detail state
       if (detailEmployee?.id === employeeId) {
@@ -326,8 +293,6 @@ export default function EmployeesPage() {
       setManagerEmployeeId(null);
     } catch {
       message.error(t("pages.employees.managerAssignError"));
-    } finally {
-      setManagerSaving(false);
     }
   };
 
@@ -412,7 +377,9 @@ export default function EmployeesPage() {
   };
 
   const detailDepartment = detailEmployee ? departmentById.get(detailEmployee.departmentId) : undefined;
-  const isLoadError = error === t("pages.employees.loadError");
+  const fetchFailed = employeesQuery.isError && !employeesQuery.data;
+  const visibleError = error ?? (fetchFailed ? t("pages.employees.loadError") : null);
+  const isLoadError = visibleError === t("pages.employees.loadError");
 
   const contractColumns: ColumnsType<EmployeeContract> = [
     { title: t("pages.employees.contractType"), dataIndex: "contractType" },
@@ -457,11 +424,11 @@ export default function EmployeesPage() {
         </Button>
       </PageToolbar>
 
-      {error ? (
+      {visibleError ? (
         <Alert
           type="warning"
           showIcon
-          message={error}
+          message={visibleError}
           description={isLoadError ? t("pages.employees.loadErrorDescription") : undefined}
           style={{ marginBottom: 16 }}
         />

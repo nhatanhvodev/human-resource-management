@@ -1,11 +1,11 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, Popconfirm, Space, Tabs } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -31,35 +31,28 @@ export default function DepartmentsPage() {
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
-  const [data, setData] = useState<PageResponse<Department>>(emptyPage);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm<{ code: string; name: string }>();
 
-  const loadDepartments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get<PageResponse<Department>>(API.DEPARTMENTS, {
-        params: { page, size: pageSize, q: keyword || undefined }
-      });
-      setData({ ...emptyPage, ...response.data, items: response.data.items ?? [] });
-    } catch {
-      setError(t("pages.departments.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [keyword, page, pageSize, t]);
+  const { data, isLoading, isError } = useApiQuery<PageResponse<Department>>(
+    ['departments', page, pageSize, keyword],
+    API.DEPARTMENTS,
+    { config: { params: { page, size: pageSize, q: keyword || undefined } } }
+  );
+  const rows: PageResponse<Department> = { ...emptyPage, ...data, items: data?.items ?? [] };
 
-  useEffect(() => {
-    void loadDepartments();
-  }, [loadDepartments]);
+  const saveMutation = useApiMutation<Department, { code: string; name: string }>({
+    invalidateKeys: [['departments']],
+  });
+  const deleteMutation = useApiMutation({
+    invalidateKeys: [['departments']],
+  });
+  const saving = saveMutation.isPending || deleteMutation.isPending;
+  const visibleError = error ?? (isError ? t("pages.departments.loadError") : null);
 
   const submitDepartment = async (values: { code: string; name: string }) => {
-    setSaving(true);
     setError(null);
     try {
       const payload = {
@@ -67,22 +60,23 @@ export default function DepartmentsPage() {
         name: values.name.trim()
       };
       if (editingDepartment) {
-        await apiClient.put(`${API.DEPARTMENTS}/${editingDepartment.id}`, payload);
+        await saveMutation.mutateAsync({
+          url: `${API.DEPARTMENTS}/${editingDepartment.id}`,
+          method: "put",
+          body: payload,
+        });
       } else {
-        await apiClient.post(API.DEPARTMENTS, payload);
+        await saveMutation.mutateAsync({ url: API.DEPARTMENTS, body: payload });
       }
       form.resetFields();
       setOpenCreate(false);
       setEditingDepartment(null);
-      await loadDepartments();
     } catch {
       setError(
         editingDepartment
           ? t("pages.departments.updateError")
           : t("pages.departments.createError")
       );
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -99,15 +93,14 @@ export default function DepartmentsPage() {
   };
 
   const deleteDepartment = async (department: Department) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.delete(`${API.DEPARTMENTS}/${department.id}`);
-      await loadDepartments();
+      await deleteMutation.mutateAsync({
+        url: `${API.DEPARTMENTS}/${department.id}`,
+        method: "delete",
+      });
     } catch {
       setError(t("pages.departments.deleteError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -140,13 +133,14 @@ export default function DepartmentsPage() {
         )
       }
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [saving, t]
   );
 
   const pagination: TablePaginationConfig = {
-    current: data.page + 1,
+    current: rows.page + 1,
     pageSize,
-    total: data.totalItems,
+    total: rows.totalItems,
     onChange: (nextPage, nextPageSize) => {
       if (nextPageSize !== pageSize) {
         setPage(0);
@@ -184,12 +178,12 @@ export default function DepartmentsPage() {
                 </Button>
               </PageToolbar>
 
-              {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+              {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
 
               <AppTable<Department>
                 rowKey="id"
-                loading={loading}
-                dataSource={data.items}
+                loading={isLoading}
+                dataSource={rows.items}
                 columns={columns}
                 pagination={pagination}
               />

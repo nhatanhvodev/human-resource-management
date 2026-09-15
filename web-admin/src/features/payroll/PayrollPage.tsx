@@ -1,10 +1,10 @@
 import { Alert, Button, Descriptions, Drawer, Form, Input, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -39,84 +39,71 @@ type Payslip = {
 
 export default function PayrollPage() {
   const { t, i18n } = useTranslation();
-  const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
-  const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [openRuns, setOpenRuns] = useState(false);
+  const [activePeriodId, setActivePeriodId] = useState<string | null>(null);
   const [openPeriod, setOpenPeriod] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm<{ fromDate: string; toDate: string }>();
 
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [openPayslips, setOpenPayslips] = useState(false);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
   const [currentRunId, setCurrentRunId] = useState<string>("");
 
-  const loadPeriods = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get<PageResponse<PayrollPeriod>>(API.PAYROLL_PERIODS, {
-        params: { page: 0, size: 10 }
-      });
-      setPeriods(response.data.items ?? []);
-    } catch {
-      setError(t("pages.payroll.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const periodsQuery = useApiQuery<PageResponse<PayrollPeriod>>(
+    ['payroll', 'periods'],
+    API.PAYROLL_PERIODS,
+    { config: { params: { page: 0, size: 10 } } }
+  );
+  const periods = periodsQuery.data?.items ?? [];
+  const loading = periodsQuery.isLoading;
 
-  useEffect(() => {
-    void loadPeriods();
-  }, [loadPeriods]);
+  const runsQuery = useApiQuery<PageResponse<PayrollRun>>(
+    ['payroll', 'runs', activePeriodId],
+    API.PAYROLL_RUNS,
+    { enabled: openRuns && Boolean(activePeriodId), config: { params: { periodId: activePeriodId, page: 0, size: 10 } } }
+  );
+  const runs = runsQuery.data?.items ?? [];
+
+  const payslipsQuery = useApiQuery<Payslip[] | PageResponse<Payslip>>(
+    ['payroll', 'payslips', activeRunId],
+    `${API.PAYROLL_RUNS}/${activeRunId}/payslips`,
+    { enabled: openPayslips && Boolean(activeRunId), config: { params: { page: 0, size: 200 } } }
+  );
+  const payslipsData = payslipsQuery.data;
+  const payslips: Payslip[] = Array.isArray(payslipsData) ? payslipsData : (payslipsData?.items ?? []);
+
+  const periodMutation = useApiMutation({ invalidateKeys: [['payroll', 'periods']] });
+  const runMutation = useApiMutation({ invalidateKeys: [['payroll', 'runs']] });
+  const saving = periodMutation.isPending;
 
   const createPeriod = async (values: { fromDate: string; toDate: string }) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.PAYROLL_PERIODS, values);
+      await periodMutation.mutateAsync({ url: API.PAYROLL_PERIODS, body: values });
       form.resetFields();
       setOpenPeriod(false);
-      await loadPeriods();
     } catch {
       setError(t("pages.payroll.createError"));
-    } finally {
-      setSaving(false);
     }
   };
 
-  const openRunsDrawer = async (periodId: string) => {
+  const openRunsDrawer = (periodId: string) => {
+    setActivePeriodId(periodId);
     setOpenRuns(true);
-    try {
-      const response = await apiClient.get<PageResponse<PayrollRun>>(API.PAYROLL_RUNS, {
-        params: { periodId, page: 0, size: 10 }
-      });
-      setRuns(response.data.items ?? []);
-    } catch {
-      setRuns([]);
-    }
   };
 
-  const openPayslipsDrawer = async (runId: string, runLabel: string) => {
+  const openPayslipsDrawer = (runId: string, runLabel: string) => {
     setCurrentRunId(runLabel);
+    setActiveRunId(runId);
     setOpenPayslips(true);
-    try {
-      const response = await apiClient.get<Payslip[] | PageResponse<Payslip>>(`${API.PAYROLL_RUNS}/${runId}/payslips`, {
-        params: { page: 0, size: 200 }
-      });
-      setPayslips(Array.isArray(response.data) ? response.data : response.data.items ?? []);
-    } catch {
-      setPayslips([]);
-    }
   };
 
   const executePeriod = async (periodId: string) => {
     setError(null);
     try {
-      await apiClient.post(`${API.PAYROLL_RUNS}/${periodId}/execute`);
-      await openRunsDrawer(periodId);
+      await runMutation.mutateAsync({ url: `${API.PAYROLL_RUNS}/${periodId}/execute`, body: null });
+      openRunsDrawer(periodId);
     } catch {
       setError(t("pages.payroll.executeError"));
     }
@@ -125,14 +112,14 @@ export default function PayrollPage() {
   const closePeriod = async (periodId: string) => {
     setError(null);
     try {
-      await apiClient.post(`${API.PAYROLL_PERIODS}/${periodId}/close`);
-      await loadPeriods();
+      await periodMutation.mutateAsync({ url: `${API.PAYROLL_PERIODS}/${periodId}/close`, body: null });
     } catch {
       setError(t("pages.payroll.closeError"));
     }
   };
 
   const money = (value?: number) => value?.toLocaleString(i18n.language === "en" ? "en-US" : "vi-VN");
+  const visibleError = error ?? (periodsQuery.isError ? t("pages.payroll.loadError") : null);
 
   const periodColumns: ColumnsType<PayrollPeriod> = [
     {
@@ -226,7 +213,7 @@ export default function PayrollPage() {
         </Button>
       </PageToolbar>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
 
       <AppTable<PayrollPeriod>
         rowKey="id"
@@ -244,7 +231,7 @@ export default function PayrollPage() {
         title={t("pages.payroll.payslipsForRun", { runId: currentRunId })}
         width="min(800px, calc(100vw - 32px))"
         open={openPayslips}
-        onClose={() => { setOpenPayslips(false); setPayslips([]); }}
+        onClose={() => { setOpenPayslips(false); setActiveRunId(null); }}
       >
         <AppTable<Payslip> rowKey="id" columns={payslipColumns} dataSource={payslips} pagination={false} />
       </Drawer>

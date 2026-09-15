@@ -146,11 +146,13 @@ public class RecruitmentService {
 
     @Transactional
     public RecruitmentApplication createApplication(UUID candidateId, UUID jobPostingId, ApplicationStatus status) {
+        String tenantId = TenantContext.get();
         Candidate candidate = candidateRepository.findById(candidateId)
+            .filter(c -> tenantId.equals(c.getTenantId()))
             .orElseThrow(() -> new IllegalArgumentException("CANDIDATE_NOT_FOUND"));
         JobPosting jobPosting = jobPostingRepository.findById(jobPostingId)
+            .filter(jp -> tenantId.equals(jp.getTenantId()))
             .orElseThrow(() -> new IllegalArgumentException("JOB_POSTING_NOT_FOUND"));
-        String tenantId = TenantContext.get();
         String applicationNo = "HS%06d".formatted(recruitmentApplicationRepository.countByTenantId(tenantId) + 1);
         return recruitmentApplicationRepository.save(
             new RecruitmentApplication(UUID.randomUUID(), tenantId, applicationNo, candidate, jobPosting, status)
@@ -170,7 +172,7 @@ public class RecruitmentService {
             departmentId,
             LocalDate.now()
         );
-        application.setStatus(ApplicationStatus.HIRED);
+        application.markHired();
         return new ConversionResult(employee.getId(), application.getId(), application.getStatus().name());
     }
 
@@ -184,7 +186,9 @@ public class RecruitmentService {
 
     @Transactional
     public RecruitmentApplication moveStage(UUID id, String stage) {
+        String tenantId = TenantContext.get();
         RecruitmentApplication application = recruitmentApplicationRepository.findById(id)
+            .filter(a -> tenantId.equals(a.getTenantId()))
             .orElseThrow(() -> new NotFoundException("APPLICATION_NOT_FOUND"));
         application.setStatus(ApplicationStatus.valueOf(stage.toUpperCase(Locale.ROOT)));
         return recruitmentApplicationRepository.save(application);
@@ -199,18 +203,21 @@ public class RecruitmentService {
 
     @Transactional
     public Interview addFeedback(UUID id, String feedback, Integer rating) {
+        String tenantId = TenantContext.get();
         Interview interview = interviewRepository.findById(id)
+            .filter(i -> tenantId.equals(i.getTenantId()))
             .orElseThrow(() -> new NotFoundException("INTERVIEW_NOT_FOUND"));
         interview.addFeedback(feedback, rating);
         return interviewRepository.save(interview);
     }
 
     @Transactional(readOnly = true)
-    public List<Interview> listInterviews(UUID applicationId, Pageable pageable) {
+    public Page<Interview> listInterviews(UUID applicationId, Pageable pageable) {
+        String tenantId = TenantContext.get();
         if (applicationId != null) {
-            return interviewRepository.findByTenantIdAndApplicationId(TenantContext.get(), applicationId);
+            return interviewRepository.findByTenantIdAndApplicationId(tenantId, applicationId, pageable);
         }
-        return interviewRepository.findAllByTenantId(TenantContext.get(), pageable).getContent();
+        return interviewRepository.findAllByTenantId(tenantId, pageable);
     }
 
     public record ConversionResult(UUID employeeId, UUID applicationId, String applicationStatus) {

@@ -1,9 +1,8 @@
 import { Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiClient } from '../../shared/api/client';
-import { getEmployeeId } from '../../shared/auth/jwt';
+import { asArray, useApiQuery } from '../../shared/api/query';
+import { useAccess } from '../../shared/auth/access';
 import { StatusTag } from '../../shared/ui/StatusTag';
 
 const { Title } = Typography;
@@ -15,22 +14,14 @@ type OnboardingTask = {
 
 export default function MyOnboardingPage() {
   const { t } = useTranslation();
-  const [data, setData] = useState<OnboardingTask[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const empId = getEmployeeId();
-        const res = await apiClient.get<OnboardingTask[]>(`/onboarding/tasks/${empId}`, {
-          headers: { 'X-Employee-Id': empId }
-        });
-        if (mounted) setData(Array.isArray(res.data) ? res.data : []);
-      } finally { if (mounted) setLoading(false); }
-    })();
-    return () => { mounted = false; };
-  }, []);
+  // Path param needs a concrete id: use DB-truth from /authz/me, not the token.
+  const { access } = useAccess();
+  const empId = access?.employeeId ?? '';
+  const { data, isLoading } = useApiQuery<OnboardingTask[]>(
+    ['self', 'onboarding-tasks', empId],
+    `/onboarding/tasks/${empId}`,
+    { enabled: Boolean(empId) }
+  );
 
   const cols: ColumnsType<OnboardingTask> = [
     { title: t('ess.task'), dataIndex: 'title' },
@@ -43,7 +34,7 @@ export default function MyOnboardingPage() {
   return (
     <div>
       <div className="page-header"><Title level={3}>{t('nav.onboarding')}</Title></div>
-      <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
+      <Table rowKey="id" loading={isLoading} dataSource={asArray<OnboardingTask>(data)} columns={cols} />
     </div>
   );
 }

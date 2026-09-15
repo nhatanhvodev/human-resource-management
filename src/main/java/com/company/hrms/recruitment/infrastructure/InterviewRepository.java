@@ -10,5 +10,6 @@ import org.springframework.data.domain.Pageable;
 
 public interface InterviewRepository extends JpaRepository<Interview, UUID> {
     List<Interview> findByTenantIdAndApplicationId(String tenantId, UUID applicationId);
+    Page<Interview> findByTenantIdAndApplicationId(String tenantId, UUID applicationId, Pageable pageable);
     Page<Interview> findAllByTenantId(String tenantId, Pageable pageable);
 }

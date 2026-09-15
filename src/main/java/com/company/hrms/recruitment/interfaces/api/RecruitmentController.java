@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -122,10 +122,16 @@ public class RecruitmentController {
     @PostMapping("/applications")
     @PreAuthorize("hasAuthority('recruitment:create')")
     public ApplicationResponse createApplication(@Valid @RequestBody CreateApplicationRequest request) {
+        ApplicationStatus status;
+        try {
+            status = ApplicationStatus.valueOf(request.status().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("INVALID_APPLICATION_STATUS: " + request.status());
+        }
         RecruitmentApplication application = recruitmentService.createApplication(
             request.candidateId(),
             request.jobPostingId(),
-            ApplicationStatus.valueOf(request.status())
+            status
         );
         return toApplicationResponse(application);
     }
@@ -226,10 +232,10 @@ public class RecruitmentController {
 
     @GetMapping("/interviews")
     @PreAuthorize("hasAuthority('recruitment:read')")
-    public List<InterviewResponse> listInterviews(@RequestParam(required = false) UUID applicationId,
+    public PageResponse<InterviewResponse> listInterviews(@RequestParam(required = false) UUID applicationId,
                                                   Pageable pageable) {
-        return recruitmentService.listInterviews(applicationId, pageable).stream()
-            .map(this::toInterviewResponse).toList();
+        return PageResponse.from(recruitmentService.listInterviews(applicationId, pageable)
+            .map(this::toInterviewResponse));
     }
 
     private InterviewResponse toInterviewResponse(Interview i) {

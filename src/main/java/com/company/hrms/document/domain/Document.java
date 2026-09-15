@@ -57,6 +57,7 @@ public class Document extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public UUID getEmployeeId() { return employeeId; }
     public String getFileName() { return fileName; }
     public String getOriginalName() { return originalName; }

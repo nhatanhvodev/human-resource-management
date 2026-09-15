@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 
 const { Text } = Typography;
@@ -43,15 +44,16 @@ type User = {
   roleIds: string[];
 };
 
+const MAIN_INVALIDATE_KEYS: readonly unknown[][] = [
+  ["authz", "me"],
+  ["authz", "permissions"],
+  ["authz", "roles"],
+  ["authz", "users"],
+  ["departments"]
+];
+
 export default function AuthorizationPage() {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [access, setAccess] = useState<AccessSnapshot | null>(null);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>();
   const [rolePermissionDraft, setRolePermissionDraft] = useState<string[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>();
@@ -71,14 +73,75 @@ export default function AuthorizationPage() {
   const [scopeUser, setScopeUser] = useState<string | undefined>();
   const [scopeDeptIds, setScopeDeptIds] = useState<string[]>([]);
   const [scopeModalOpen, setScopeModalOpen] = useState(false);
-  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
-  const [auditData, setAuditData] = useState<any[]>([]);
   const [auditPage, setAuditPage] = useState(0);
   const [auditSize, setAuditSize] = useState(10);
-  const [auditTotal, setAuditTotal] = useState(0);
-  const [idpMappings, setIdpMappings] = useState<{ id: string; idpGroup: string; roleId: string; roleCode: string }[]>([]);
   const [newIdpGroup, setNewIdpGroup] = useState("");
   const [newIdpRoleId, setNewIdpRoleId] = useState<string | undefined>();
+
+  const meQuery = useApiQuery<AccessSnapshot>(["authz", "me"], API.AUTH.ME);
+  const permissionsQuery = useApiQuery<Permission[]>(["authz", "permissions"], API.AUTHZ.PERMISSIONS);
+  const rolesQuery = useApiQuery<Role[]>(["authz", "roles"], API.AUTHZ.ROLES);
+  const usersQuery = useApiQuery<User[]>(["authz", "users"], API.AUTHZ.USERS);
+  const departmentsQuery = useApiQuery<PageResponse<{ id: string; name: string }>>(["departments"], API.DEPARTMENTS);
+  const auditQuery = useApiQuery<any>(
+    ["authz", "audit", auditPage, auditSize],
+    `${API.AUTHZ.AUDIT}?page=${auditPage}&size=${auditSize}`
+  );
+  const idpQuery = useApiQuery<any[]>(["authz", "idp-mappings"], API.AUTHZ.IDP_MAPPINGS);
+
+  const access = (meQuery.data as AccessSnapshot | undefined) ?? null;
+  const permissions = (permissionsQuery.data as Permission[] | undefined) ?? [];
+  const roles = (rolesQuery.data as Role[] | undefined) ?? [];
+  const users = (usersQuery.data as User[] | undefined) ?? [];
+  const departments = (departmentsQuery.data as PageResponse<{ id: string; name: string }> | undefined)?.items ?? [];
+
+  const auditBody = auditQuery.data as any;
+  const auditData: any[] = auditBody?.content ?? (Array.isArray(auditBody) ? auditBody : []);
+  const auditTotal: number = auditBody?.content ? (auditBody.totalElements ?? 0) : (Array.isArray(auditBody) ? auditBody.length : 0);
+
+  const idpMappings = ((idpQuery.data as { id: string; idpGroup: string; roleId: string; roleCode: string }[] | undefined) ?? []);
+
+  const loading =
+    meQuery.isLoading ||
+    permissionsQuery.isLoading ||
+    rolesQuery.isLoading ||
+    usersQuery.isLoading ||
+    departmentsQuery.isLoading;
+  const error =
+    meQuery.isError ||
+    permissionsQuery.isError ||
+    rolesQuery.isError ||
+    usersQuery.isError ||
+    departmentsQuery.isError
+      ? t("pages.authorization.loadError")
+      : null;
+
+  const mainMutation = useApiMutation({ invalidateKeys: MAIN_INVALIDATE_KEYS });
+  const toggleMutation = useApiMutation({ invalidateKeys: MAIN_INVALIDATE_KEYS });
+  const scopeMutation = useApiMutation();
+  const idpMutation = useApiMutation({ invalidateKeys: [["authz", "idp-mappings"]] });
+  const saving = mainMutation.isPending || scopeMutation.isPending;
+
+  // Preserve the old loadData default-selection semantics: whenever the current
+  // selection is missing (initial load, or the selected entry was deleted),
+  // fall back to the first entry.
+  useEffect(() => {
+    const list = rolesQuery.data as Role[] | undefined;
+    if (list && (selectedRoleId === undefined || !list.some((r) => r.id === selectedRoleId))) {
+      const next = list[0];
+      setSelectedRoleId(next?.id);
+      setRolePermissionDraft(next?.permissionCodes ?? []);
+    }
+  }, [rolesQuery.data, selectedRoleId]);
+
+  useEffect(() => {
+    const list = usersQuery.data as User[] | undefined;
+    if (list && (selectedUserId === undefined || !list.some((u) => u.id === selectedUserId))) {
+      const next = list[0];
+      setSelectedUserId(next?.id);
+      setUserRoleDraft(next?.roleIds ?? []);
+    }
+  }, [usersQuery.data, selectedUserId]);
 
   const selectedRole = roles.find((role) => role.id === selectedRoleId);
   const selectedUser = users.find((user) => user.id === selectedUserId);
@@ -97,38 +160,13 @@ export default function AuthorizationPage() {
     [roles]
   );
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [meResponse, permissionResponse, roleResponse, userResponse, deptResponse] = await Promise.all([
-        apiClient.get<AccessSnapshot>(API.AUTH.ME),
-        apiClient.get<Permission[]>(API.AUTHZ.PERMISSIONS),
-        apiClient.get<Role[]>(API.AUTHZ.ROLES),
-        apiClient.get<User[]>(API.AUTHZ.USERS),
-        apiClient.get<PageResponse<{ id: string; name: string }>>(API.DEPARTMENTS)
-      ]);
-      setAccess(meResponse.data);
-      setPermissions(permissionResponse.data);
-      setRoles(roleResponse.data);
-      setUsers(userResponse.data);
-      setDepartments(deptResponse.data.items || []);
-      const nextRole = roleResponse.data[0];
-      const nextUser = userResponse.data[0];
-      setSelectedRoleId(nextRole?.id);
-      setRolePermissionDraft(nextRole?.permissionCodes ?? []);
-      setSelectedUserId(nextUser?.id);
-      setUserRoleDraft(nextUser?.roleIds ?? []);
-    } catch {
-      setError(t("pages.authorization.loadError"));
-    } finally {
-      setLoading(false);
-    }
+  const reload = () => {
+    void meQuery.refetch();
+    void permissionsQuery.refetch();
+    void rolesQuery.refetch();
+    void usersQuery.refetch();
+    void departmentsQuery.refetch();
   };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const onSelectRole = (role: Role) => {
     setSelectedRoleId(role.id);
@@ -144,15 +182,15 @@ export default function AuthorizationPage() {
     if (!selectedRole) {
       return;
     }
-    setSaving(true);
     try {
-      await apiClient.put(`${API.AUTHZ.ROLES}/${selectedRole.id}/permissions`, { permissionCodes: rolePermissionDraft });
+      await mainMutation.mutateAsync({
+        url: `${API.AUTHZ.ROLES}/${selectedRole.id}/permissions`,
+        method: "put",
+        body: { permissionCodes: rolePermissionDraft }
+      });
       message.success(t("pages.authorization.saved"));
-      await loadData();
     } catch {
       message.error(t("pages.authorization.saveError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -160,15 +198,15 @@ export default function AuthorizationPage() {
     if (!selectedUser) {
       return;
     }
-    setSaving(true);
     try {
-      await apiClient.put(`${API.AUTHZ.USERS}/${selectedUser.id}/roles`, { roleIds: userRoleDraft });
+      await mainMutation.mutateAsync({
+        url: `${API.AUTHZ.USERS}/${selectedUser.id}/roles`,
+        method: "put",
+        body: { roleIds: userRoleDraft }
+      });
       message.success(t("pages.authorization.saved"));
-      await loadData();
     } catch {
       message.error(t("pages.authorization.saveError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -177,13 +215,15 @@ export default function AuthorizationPage() {
       message.warning(t("common.createError"));
       return;
     }
-    setSaving(true);
     try {
-      await apiClient.post(API.AUTHZ.ROLES, {
-        code: newRoleCode.trim(),
-        name: newRoleName.trim(),
-        description: newRoleDesc.trim() || undefined,
-        templateRoleId: newRoleTemplate
+      await mainMutation.mutateAsync({
+        url: API.AUTHZ.ROLES,
+        body: {
+          code: newRoleCode.trim(),
+          name: newRoleName.trim(),
+          description: newRoleDesc.trim() || undefined,
+          templateRoleId: newRoleTemplate
+        }
       });
       message.success(t("pages.authorization.saved"));
       setCreateRoleOpen(false);
@@ -191,11 +231,8 @@ export default function AuthorizationPage() {
       setNewRoleName("");
       setNewRoleDesc("");
       setNewRoleTemplate(undefined);
-      await loadData();
     } catch {
       message.error(t("pages.authorization.saveError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -203,23 +240,25 @@ export default function AuthorizationPage() {
     if (!selectedRole) {
       return;
     }
-    setSaving(true);
     try {
-      await apiClient.delete(`${API.AUTHZ.ROLES}/${selectedRole.id}`);
+      await mainMutation.mutateAsync({
+        url: `${API.AUTHZ.ROLES}/${selectedRole.id}`,
+        method: "delete"
+      });
       message.success(t("pages.authorization.saved"));
-      await loadData();
     } catch {
       message.error(t("pages.authorization.saveError"));
-    } finally {
-      setSaving(false);
     }
   };
 
   const toggleUser = async (userId: string, enabled: boolean) => {
     try {
-      await apiClient.put(`${API.AUTHZ.USERS}/${userId}/enabled`, { enabled });
+      await toggleMutation.mutateAsync({
+        url: `${API.AUTHZ.USERS}/${userId}/enabled`,
+        method: "put",
+        body: { enabled }
+      });
       message.success(t("pages.authorization.saved"));
-      await loadData();
     } catch {
       message.error(t("pages.authorization.saveError"));
     }
@@ -230,23 +269,22 @@ export default function AuthorizationPage() {
       message.warning(t("common.createError"));
       return;
     }
-    setSaving(true);
     try {
-      await apiClient.post(API.AUTHZ.USERS, {
-        username: newUsername.trim(),
-        displayName: newDisplayName.trim(),
-        roleIds: newUserRoleIds
+      await mainMutation.mutateAsync({
+        url: API.AUTHZ.USERS,
+        body: {
+          username: newUsername.trim(),
+          displayName: newDisplayName.trim(),
+          roleIds: newUserRoleIds
+        }
       });
       message.success(t("pages.authorization.saved"));
       setCreateUserOpen(false);
       setNewUsername("");
       setNewDisplayName("");
       setNewUserRoleIds([]);
-      await loadData();
     } catch {
       message.error(t("pages.authorization.saveError"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -263,61 +301,37 @@ export default function AuthorizationPage() {
 
   const saveScopes = async () => {
     if (!scopeUser) return;
-    setSaving(true);
     try {
-      await apiClient.put(`${API.AUTHZ.USERS}/${scopeUser}/scopes`, { departmentIds: scopeDeptIds });
+      await scopeMutation.mutateAsync({
+        url: `${API.AUTHZ.USERS}/${scopeUser}/scopes`,
+        method: "put",
+        body: { departmentIds: scopeDeptIds }
+      });
       message.success(t("pages.authorization.saved"));
       setScopeModalOpen(false);
     } catch {
       message.error(t("pages.authorization.saveError"));
-    } finally {
-      setSaving(false);
     }
   };
-
-  const loadAudit = async (page: number, size: number) => {
-    try {
-      const res = await apiClient.get<any>(`${API.AUTHZ.AUDIT}?page=${page}&size=${size}`);
-      const body = res.data;
-      if (body.content) {
-        setAuditData(body.content);
-        setAuditTotal(body.totalElements ?? 0);
-      } else {
-        setAuditData(Array.isArray(body) ? body : []);
-        setAuditTotal(Array.isArray(body) ? body.length : 0);
-      }
-    } catch { /* ignore */ }
-  };
-
-  useEffect(() => {
-    loadAudit(auditPage, auditSize);
-  }, [auditPage, auditSize]);
-
-  const loadIdpMappings = async () => {
-    try {
-      const res = await apiClient.get<any[]>(API.AUTHZ.IDP_MAPPINGS);
-      setIdpMappings(res.data);
-    } catch { /* ignore */ }
-  };
-
-  useEffect(() => {
-    loadIdpMappings();
-  }, []);
 
   const createIdpMapping = async () => {
     if (!newIdpGroup.trim() || !newIdpRoleId) return;
     try {
-      await apiClient.post(API.AUTHZ.IDP_MAPPINGS, { idpGroup: newIdpGroup.trim(), roleId: newIdpRoleId });
+      await idpMutation.mutateAsync({
+        url: API.AUTHZ.IDP_MAPPINGS,
+        body: { idpGroup: newIdpGroup.trim(), roleId: newIdpRoleId }
+      });
       setNewIdpGroup("");
       setNewIdpRoleId(undefined);
-      await loadIdpMappings();
     } catch { message.error(t("pages.authorization.saveError")); }
   };
 
   const deleteIdpMapping = async (id: string) => {
     try {
-      await apiClient.delete(`${API.AUTHZ.IDP_MAPPINGS}/${id}`);
-      await loadIdpMappings();
+      await idpMutation.mutateAsync({
+        url: `${API.AUTHZ.IDP_MAPPINGS}/${id}`,
+        method: "delete"
+      });
     } catch { message.error(t("pages.authorization.saveError")); }
   };
   const roleTable = (
@@ -456,7 +470,7 @@ export default function AuthorizationPage() {
           <h1>{t("pages.authorization.title")}</h1>
           <p>{t("pages.authorization.subtitle")}</p>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadData}>
+        <Button icon={<ReloadOutlined />} onClick={reload}>
           {t("pages.authorization.reload")}
         </Button>
       </div>

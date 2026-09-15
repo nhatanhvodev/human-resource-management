@@ -1,10 +1,9 @@
 import { Button, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiClient } from '../../shared/api/client';
+import { API } from '../../shared/api/endpoints';
+import { useApiMutation, useApiQuery } from '../../shared/api/query';
 import type { PageResponse } from '../../shared/api/types';
-import { getEmployeeId } from '../../shared/auth/jwt';
 import { StatusTag } from '../../shared/ui/StatusTag';
 
 const { Title } = Typography;
@@ -16,23 +15,23 @@ type LeaveItem = {
 
 export default function MyLeavePage() {
   const { t } = useTranslation();
-  const [data, setData] = useState<LeaveItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useApiQuery<PageResponse<LeaveItem>>(
+    ['self', 'leave-requests'],
+    API.SELF.LEAVE_REQUESTS,
+    { config: { params: { page: 0, size: 20 } } }
+  );
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const empId = getEmployeeId();
-        const res = await apiClient.get<PageResponse<LeaveItem>>('/self/leave-requests', {
-          params: { page: 0, size: 20 },
-          headers: { 'X-Employee-Id': empId }
-        });
-        if (mounted) setData(res.data.items ?? []);
-      } finally { if (mounted) setLoading(false); }
-    })();
-    return () => { mounted = false; };
-  }, []);
+  const createLeave = useApiMutation<LeaveItem, { fromDate: string; toDate: string; leaveType: string; reason?: string }>({
+    invalidateKeys: [['self', 'leave-requests'], ['self', 'leave-balances']],
+  });
+
+  const submitLeave = () => {
+    // Minimal self-service submit; full form lives in the HR flow.
+    void createLeave.mutateAsync({
+      url: API.SELF.LEAVE_REQUESTS,
+      body: { fromDate: new Date().toISOString().slice(0, 10), toDate: new Date().toISOString().slice(0, 10), leaveType: 'ANNUAL' },
+    }).catch(() => undefined);
+  };
 
   const cols: ColumnsType<LeaveItem> = [
     { title: t('common.type'), dataIndex: 'leaveType' },
@@ -46,8 +45,10 @@ export default function MyLeavePage() {
   return (
     <div>
       <div className="page-header"><Title level={3}>{t('nav.leave')}</Title></div>
-      <Button type="primary" style={{ marginBottom: 16 }}>{t('ess.submitLeave')}</Button>
-      <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
+      <Button type="primary" style={{ marginBottom: 16 }} loading={createLeave.isPending} onClick={submitLeave}>
+        {t('ess.submitLeave')}
+      </Button>
+      <Table rowKey="id" loading={isLoading} dataSource={data?.items ?? []} columns={cols} />
     </div>
   );
 }

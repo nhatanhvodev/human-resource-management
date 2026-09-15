@@ -37,6 +37,7 @@ public class Enrollment extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public UUID getCourseId() { return courseId; }
     public UUID getEmployeeId() { return employeeId; }
     public int getProgress() { return progress; }

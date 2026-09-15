@@ -1,5 +1,6 @@
 package com.company.hrms.integration.application;
 
+import com.company.hrms.employee.infrastructure.EmployeeRepository;
 import com.company.hrms.integration.domain.Announcement;
 import com.company.hrms.integration.domain.AnnouncementPriority;
 import com.company.hrms.integration.infrastructure.AnnouncementRepository;
@@ -18,14 +19,30 @@ import java.util.UUID;
 @Service
 public class AnnouncementService {
     private final AnnouncementRepository repository;
+    private final EmployeeRepository employeeRepository;
+    private final NotificationService notificationService;
 
-    public AnnouncementService(AnnouncementRepository repository) { this.repository = repository; }
+    public AnnouncementService(AnnouncementRepository repository,
+                               EmployeeRepository employeeRepository,
+                               NotificationService notificationService) {
+        this.repository = repository;
+        this.employeeRepository = employeeRepository;
+        this.notificationService = notificationService;
+    }
 
     @Transactional
     public Announcement create(String title, String content, Instant publishAt, Instant expireAt, String priority) {
-        UUID authorId = SecurityUtils.getCurrentEmployeeId();
-        return repository.save(new Announcement(UUID.randomUUID(), TenantContext.get(), authorId,
+        UUID authorId = SecurityUtils.getCurrentEmployeeId().orElse(null);
+        Announcement announcement = repository.save(new Announcement(UUID.randomUUID(), TenantContext.get(), authorId,
             title, content, publishAt, expireAt, AnnouncementPriority.valueOf(priority)));
+
+        employeeRepository.findAllByTenantId(TenantContext.get(), Pageable.unpaged())
+            .forEach(employee -> notificationService.create(employee.getId(),
+                "New Announcement: " + title,
+                content != null && content.length() > 200 ? content.substring(0, 200) + "..." : content,
+                "ANNOUNCEMENT", announcement.getId().toString(), null, null));
+
+        return announcement;
     }
 
     @Transactional

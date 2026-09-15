@@ -5,6 +5,11 @@ type Account = {
   password: string;
 };
 
+/**
+ * P3: auth is cookie-based now (httpOnly refresh + in-memory access token).
+ * Logging in via page.request stores the refresh cookie in the browser
+ * context; the app silently refreshes on boot — no localStorage writes.
+ */
 export async function loginAs(page: Page, account: Account, targetPath = "/dashboard") {
   const response = await page.request.post("/api/v1/auth/login", {
     headers: { "X-Tenant-Id": "default" },
@@ -15,13 +20,9 @@ export async function loginAs(page: Page, account: Account, targetPath = "/dashb
     throw new Error(`Login failed for ${account.username}: ${response.status()}`);
   }
 
-  const body = await response.json();
   await page.goto("/login", { waitUntil: "domcontentloaded" });
-  await page.evaluate(({ token, tenantId }) => {
-    localStorage.setItem("hrms.dev.token", token);
-    localStorage.setItem("hrms.dev.tenant", tenantId);
+  await page.evaluate(() => {
     localStorage.setItem("i18nextLng", "en");
-  }, body);
+  });
   await page.goto(targetPath);
 }
-

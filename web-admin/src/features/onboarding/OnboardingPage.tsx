@@ -1,11 +1,17 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, InputNumber, Select, Space, Tabs } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import type { UseQueryResult } from "@tanstack/react-query";
 
 import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+// NOTE: `as UseQueryResult<...>` restores useApiQuery's documented return type, which currently
+// degrades under the installed @tanstack/react-query 5.102.8 (overload error inside query.ts).
+// The cast is type-only and has zero runtime effect.
+import { queryClient, useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -19,73 +25,69 @@ type Employee = { id: string; employeeNo: string; fullName: string };
 
 export default function OnboardingPage() {
   const { t } = useTranslation();
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [templateTasks, setTemplateTasks] = useState<Record<string, TemplateTask[]>>({});
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openCreateTemplate, setOpenCreateTemplate] = useState(false);
   const [openStart, setOpenStart] = useState(false);
   const [activeTab, setActiveTab] = useState("templates");
   const [form] = Form.useForm();
 
-  const loadTemplates = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get<Template[]>(API.ONBOARDING.TEMPLATES);
-      setTemplates(res.data);
-    } catch {
-      setError(t("pages.onboarding.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const templatesQuery = useApiQuery<Template[]>(["onboarding", "templates"], API.ONBOARDING.TEMPLATES) as UseQueryResult<Template[], unknown>;
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(["onboarding", "employees"], API.EMPLOYEES, {
+    config: { params: { page: 0, size: 100, status: "ACTIVE" } }
+  }) as UseQueryResult<PageResponse<Employee>, unknown>;
 
-  const loadEmployees = useCallback(async () => {
-    try {
-      const res = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 100, status: "ACTIVE" } });
-      setEmployees(res.data.items ?? []);
-    } catch { setEmployees([]); }
-  }, []);
+  const templates = templatesQuery.data ?? [];
+  const loading = templatesQuery.isLoading;
+  const loadError = templatesQuery.isError ? t("pages.onboarding.loadError") : null;
+  const visibleError = error ?? loadError;
+  const employees = employeesQuery.data?.items ?? [];
 
+  const createTemplateMutation = useApiMutation<Template, { name: string; description: string }>({
+    invalidateKeys: [["onboarding", "templates"]]
+  });
+  const deleteTemplateMutation = useApiMutation({
+    invalidateKeys: [["onboarding", "templates"]]
+  });
+  const startOnboardingMutation = useApiMutation();
+  const saving = createTemplateMutation.isPending || deleteTemplateMutation.isPending || startOnboardingMutation.isPending;
+
+  // On-demand per-template expansion; fetched through the shared queryClient
+  // so repeat expansions are served from cache instead of refetching.
   const loadTemplateTasks = async (id: string) => {
     try {
-      const res = await apiClient.get<TemplateTask[]>(`${API.ONBOARDING.TEMPLATES}/${id}/tasks`);
-      setTemplateTasks(prev => ({ ...prev, [id]: res.data }));
+      const tasks = await queryClient.fetchQuery({
+        queryKey: ["onboarding", "template-tasks", id],
+        queryFn: async () => (await apiClient.get<TemplateTask[]>(`${API.ONBOARDING.TEMPLATES}/${id}/tasks`)).data
+      });
+      setTemplateTasks(prev => ({ ...prev, [id]: tasks }));
     } catch {}
   };
 
-  useEffect(() => { void loadTemplates(); }, [loadTemplates]);
-  useEffect(() => { void loadEmployees(); }, [loadEmployees]);
-
   const createTemplate = async (values: { name: string; description: string }) => {
-    setSaving(true);
+    setError(null);
     try {
-      await apiClient.post(API.ONBOARDING.TEMPLATES, values);
+      await createTemplateMutation.mutateAsync({ url: API.ONBOARDING.TEMPLATES, body: values });
       form.resetFields();
       setOpenCreateTemplate(false);
-      await loadTemplates();
     } catch { setError(t("pages.onboarding.createError")); }
-    finally { setSaving(false); }
   };
 
   const deleteTemplate = async (id: string) => {
-    setSaving(true);
-    try { await apiClient.delete(`${API.ONBOARDING.TEMPLATES}/${id}`); await loadTemplates(); }
+    setError(null);
+    try {
+      await deleteTemplateMutation.mutateAsync({ url: `${API.ONBOARDING.TEMPLATES}/${id}`, method: "delete" });
+    }
     catch { setError(t("pages.onboarding.deleteError")); }
-    finally { setSaving(false); }
   };
 
   const startOnboarding = async (values: { employeeId: string; templateId: string }) => {
-    setSaving(true);
+    setError(null);
     try {
-      await apiClient.post(API.ONBOARDING.START, values);
+      await startOnboardingMutation.mutateAsync({ url: API.ONBOARDING.START, body: values });
       form.resetFields();
       setOpenStart(false);
     } catch { setError(t("pages.onboarding.startError")); }
-    finally { setSaving(false); }
   };
 
   const templateColumns = useMemo<ColumnsType<Template>>(() => [
@@ -124,7 +126,7 @@ export default function OnboardingPage() {
                 <Button type="primary" icon={<PlusOutlined />}
                   onClick={() => setOpenCreateTemplate(true)}>{t("pages.onboarding.createTemplate")}</Button>
               </PageToolbar>
-              {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+              {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
               <AppTable<Template> rowKey="id" loading={loading} columns={templateColumns} dataSource={templates} pagination={false} />
               {Object.entries(templateTasks).map(([id, tasks]) => (
                 <div key={id} style={{ marginTop: 16 }}>

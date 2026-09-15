@@ -1,9 +1,11 @@
 package com.company.hrms.shared.security;
 
+import com.company.hrms.shared.exception.ForbiddenException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public final class SecurityUtils {
@@ -11,83 +13,86 @@ public final class SecurityUtils {
     private SecurityUtils() {
     }
 
-    /**
-     * Gets the current authenticated user's ID from the JWT {@code sub} claim.
-     *
-     * @return the user ID, or {@code null} if not authenticated or claim missing
-     */
-    public static UUID getCurrentUserId() {
+    public static Optional<UUID> getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
             String userId = jwtAuth.getToken().getSubject();
             if (userId != null && !userId.isBlank()) {
                 try {
-                    return UUID.fromString(userId);
+                    return Optional.of(UUID.fromString(userId));
                 } catch (IllegalArgumentException ignored) {
-                    // subject is not a UUID (e.g., local dev token "admin")
-                    return null;
+                    return Optional.empty();
                 }
             }
         }
-        return null;
+        return Optional.empty();
     }
 
-    /**
-     * Gets the display name of the current authenticated user from JWT claims.
-     * Checks {@code display_name}, {@code name}, then {@code preferred_username} claims in order.
-     *
-     * @return the display name, or {@code null} if not authenticated or no claim found
-     */
-    public static String getCurrentUserDisplayName() {
+    public static Optional<String> getCurrentUserDisplayName() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
             String displayName = jwtAuth.getToken().getClaimAsString("display_name");
             if (displayName != null && !displayName.isBlank()) {
-                return displayName;
+                return Optional.of(displayName);
             }
             String name = jwtAuth.getToken().getClaimAsString("name");
             if (name != null && !name.isBlank()) {
-                return name;
+                return Optional.of(name);
             }
             String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
             if (preferredUsername != null && !preferredUsername.isBlank()) {
-                return preferredUsername;
+                return Optional.of(preferredUsername);
             }
         }
-        return null;
+        return Optional.empty();
     }
 
-    /**
-     * Gets the current authenticated user's employee ID from the JWT {@code employee_id} claim.
-     *
-     * @return the employee ID, or {@code null} if not authenticated or claim missing
-     */
-    public static UUID getCurrentEmployeeId() {
+    public static Optional<UUID> getCurrentEmployeeId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
             String empId = jwtAuth.getToken().getClaimAsString("employee_id");
-            if (empId != null) {
-                return UUID.fromString(empId);
+            if (empId != null && !empId.isBlank()) {
+                try {
+                    return Optional.of(UUID.fromString(empId.trim()));
+                } catch (IllegalArgumentException ignored) {
+                    return Optional.empty();
+                }
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     /**
-     * Gets the preferred username of the current authenticated user from JWT claims.
-     *
-     * @deprecated Use {@link #getCurrentUserDisplayName()} for a more robust display-name resolution.
-     * @return the preferred username, or {@code null} if not authenticated or claim missing
+     * Resolve the employee id for "mine"/self endpoints.
+     * P0 IDOR fix: the JWT claim wins. The legacy {@code X-Employee-Id} header
+     * is only honored when the JWT carries no employee_id (tests, service
+     * accounts) — never as an override.
      */
+    public static UUID resolveSelfEmployeeId(UUID headerEmployeeId) {
+        Optional<UUID> jwtEmployeeId = getCurrentEmployeeId();
+        if (jwtEmployeeId.isPresent()) {
+            return jwtEmployeeId.get();
+        }
+        if (headerEmployeeId != null) {
+            return headerEmployeeId;
+        }
+        throw new ForbiddenException("Missing employee identity");
+    }
+
+    public static UUID requireCurrentEmployeeId() {
+        return getCurrentEmployeeId()
+                .orElseThrow(() -> new ForbiddenException("Missing employee identity"));
+    }
+
     @Deprecated
-    public static String getCurrentEmployeeName() {
+    public static Optional<String> getCurrentEmployeeName() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
             String name = jwtAuth.getToken().getClaimAsString("preferred_username");
             if (name != null) {
-                return name;
+                return Optional.of(name);
             }
         }
-        return null;
+        return Optional.empty();
     }
 }

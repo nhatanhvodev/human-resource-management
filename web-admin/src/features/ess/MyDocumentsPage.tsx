@@ -1,11 +1,13 @@
 import { UploadOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Modal, Select, Table, Upload, Typography } from "antd";
+import { Alert, Button, Form, Modal, Select, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
-import { getEmployeeId } from "../../shared/auth/jwt";
+import { useApiQuery } from "../../shared/api/query";
+import type { PageResponse } from "../../shared/api/types";
+import { useAccess } from "../../shared/auth/access";
 
 const { Title } = Typography;
 
@@ -16,29 +18,17 @@ type DocumentItem = {
 
 export default function MyDocumentsPage() {
   const { t } = useTranslation();
-  const [data, setData] = useState<DocumentItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { access } = useAccess();
+  // Backend /documents/mine returns a PageResponse (not a raw array).
+  const { data, isLoading, refetch } = useApiQuery<PageResponse<DocumentItem>>(
+    ['self', 'documents'],
+    API.DOCUMENTS_MINE,
+    { config: { params: { page: 0, size: 20 } } }
+  );
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [form] = Form.useForm();
-
-  const load = () => {
-    let mounted = true;
-    setLoading(true);
-    (async () => {
-      try {
-        const empId = getEmployeeId();
-        const res = await apiClient.get<DocumentItem[]>(API.DOCUMENTS_MINE, {
-          headers: { "X-Employee-Id": empId }
-        });
-        if (mounted) setData(Array.isArray(res.data) ? res.data : []);
-      } finally { if (mounted) setLoading(false); }
-    })();
-    return () => { mounted = false; };
-  };
-
-  useEffect(load, []);
 
   const handleUpload = async (values: { category: string }) => {
     setUploading(true);
@@ -53,14 +43,15 @@ export default function MyDocumentsPage() {
       }
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("employeeId", getEmployeeId());
+      // DB-truth employee id (not a spoofable header).
+      formData.append("employeeId", access?.employeeId ?? "");
       formData.append("category", values.category);
       await apiClient.post(API.DOCUMENTS_UPLOAD, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
       form.resetFields();
       setUploadOpen(false);
-      load();
+      await refetch();
     } catch {
       setUploadError(t("pages.documents.uploadError"));
     } finally {
@@ -82,7 +73,7 @@ export default function MyDocumentsPage() {
       <Button type="primary" icon={<UploadOutlined />} style={{ marginBottom: 16 }} onClick={() => setUploadOpen(true)}>
         {t("ess.upload")}
       </Button>
-      <Table rowKey="id" loading={loading} dataSource={data} columns={cols} />
+      <Table rowKey="id" loading={isLoading} dataSource={data?.items ?? []} columns={cols} />
 
       <Modal title={t("ess.upload")} open={uploadOpen} onCancel={() => { setUploadOpen(false); setUploadError(null); form.resetFields(); }}
         footer={null} destroyOnClose>

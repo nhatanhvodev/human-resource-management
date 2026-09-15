@@ -122,6 +122,12 @@ public class AuthorizationController {
         return ResponseEntity.created(URI.create("/api/v1/authz/idp-mappings/" + mapping.id())).body(mapping);
     }
 
+    @PutMapping("/users/{userId}/password")
+    @PreAuthorize("hasAuthority('authz:update')")
+    public void setUserPassword(@PathVariable UUID userId, @RequestBody SetPasswordRequest request) {
+        rbacAuthorityService.setUserPassword(tenantId(), userId, request.password());
+    }
+
     @DeleteMapping("/idp-mappings/{mappingId}")
     @PreAuthorize("hasAuthority('authz:update')")
     public void deleteIdpMapping(@PathVariable UUID mappingId) {
@@ -140,4 +146,5 @@ public class AuthorizationController {
     public record ToggleEnabledRequest(boolean enabled) {}
     public record SetScopesRequest(List<UUID> departmentIds) {}
     public record CreateIdpMappingRequest(String idpGroup, UUID roleId) {}
+    public record SetPasswordRequest(String password) {}
 }

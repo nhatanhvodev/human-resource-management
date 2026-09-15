@@ -1,11 +1,16 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Alert, Button, Form, Input, InputNumber, Select, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
+import type { UseQueryResult } from "@tanstack/react-query";
+
 import { API } from "../../shared/api/endpoints";
+// NOTE: `as UseQueryResult<...>` restores useApiQuery's documented return type, which currently
+// degrades under the installed @tanstack/react-query 5.102.8 (overload error inside query.ts).
+// The cast is type-only and has zero runtime effect.
+import { useApiMutation, useApiQuery } from "../../shared/api/query";
 import type { PageResponse } from "../../shared/api/types";
 import { AppTable } from "../../shared/ui/AppTable";
 import { FormDrawer } from "../../shared/ui/FormDrawer";
@@ -26,10 +31,6 @@ type Employee = { id: string; employeeNo: string; fullName: string };
 
 export default function TrainingPage() {
   const { t } = useTranslation();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openEnroll, setOpenEnroll] = useState(false);
@@ -37,48 +38,42 @@ export default function TrainingPage() {
   const [form] = Form.useForm();
   const [enrollForm] = Form.useForm();
 
-  const loadCourses = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get<PageResponse<Course>>(API.TRAINING.COURSES, { params: { page: 0, size: 50 } });
-      setCourses(res.data.items ?? []);
-    } catch {
-      setError(t("pages.training.loadError"));
-    } finally { setLoading(false); }
-  }, [t]);
+  const coursesQuery = useApiQuery<PageResponse<Course>>(["training", "courses"], API.TRAINING.COURSES, {
+    config: { params: { page: 0, size: 50 } }
+  }) as UseQueryResult<PageResponse<Course>, unknown>;
+  const employeesQuery = useApiQuery<PageResponse<Employee>>(["training", "employees"], API.EMPLOYEES, {
+    config: { params: { page: 0, size: 100, status: "ACTIVE" } }
+  }) as UseQueryResult<PageResponse<Employee>, unknown>;
 
-  const loadEmployees = useCallback(async () => {
-    try {
-      const res = await apiClient.get<PageResponse<Employee>>(API.EMPLOYEES, { params: { page: 0, size: 100, status: "ACTIVE" } });
-      setEmployees(res.data.items ?? []);
-    } catch { setEmployees([]); }
-  }, []);
+  const courses = coursesQuery.data?.items ?? [];
+  const loading = coursesQuery.isLoading;
+  const loadError = coursesQuery.isError ? t("pages.training.loadError") : null;
+  const visibleError = error ?? loadError;
+  const employees = employeesQuery.data?.items ?? [];
 
-  useEffect(() => { void loadCourses(); }, [loadCourses]);
-  useEffect(() => { void loadEmployees(); }, [loadEmployees]);
+  const createCourseMutation = useApiMutation<Course, any>({
+    invalidateKeys: [["training", "courses"]]
+  });
+  const enrollMutation = useApiMutation<unknown, { courseId: string; employeeId: string }>();
+  const saving = createCourseMutation.isPending || enrollMutation.isPending;
 
   const createCourse = async (values: any) => {
-    setSaving(true);
     setError(null);
     try {
-      await apiClient.post(API.TRAINING.COURSES, values);
+      await createCourseMutation.mutateAsync({ url: API.TRAINING.COURSES, body: values });
       form.resetFields();
       setOpenCreate(false);
-      await loadCourses();
     } catch { setError(t("pages.training.createError")); }
-    finally { setSaving(false); }
   };
 
   const enroll = async (values: { employeeId: string }) => {
     if (!selectedCourseId) return;
-    setSaving(true);
+    setError(null);
     try {
-      await apiClient.post(API.TRAINING.ENROLL, { courseId: selectedCourseId, employeeId: values.employeeId });
+      await enrollMutation.mutateAsync({ url: API.TRAINING.ENROLL, body: { courseId: selectedCourseId, employeeId: values.employeeId } });
       enrollForm.resetFields();
       setOpenEnroll(false);
     } catch { setError(t("pages.training.enrollError")); }
-    finally { setSaving(false); }
   };
 
   const coursesColumns = useMemo<ColumnsType<Course>>(() => [
@@ -110,7 +105,7 @@ export default function TrainingPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenCreate(true)}>{t("pages.training.createCourse")}</Button>
       </PageToolbar>
 
-      {error ? <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {visibleError ? <Alert type="warning" showIcon message={visibleError} style={{ marginBottom: 16 }} /> : null}
 
       <AppTable<Course> rowKey="id" loading={loading} columns={coursesColumns} dataSource={courses} pagination={false} />
 

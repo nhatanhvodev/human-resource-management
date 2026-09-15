@@ -4,6 +4,8 @@ import com.company.hrms.document.domain.*;
 import com.company.hrms.document.infrastructure.DocumentRepository;
 import com.company.hrms.shared.exception.NotFoundException;
 import com.company.hrms.shared.tenant.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ import java.util.UUID;
 
 @Service
 public class DocumentService {
+    private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
     private final DocumentRepository repository;
     private final Path basePath;
 
@@ -61,7 +64,9 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public Document getById(UUID id) {
+        String tenantId = TenantContext.get();
         return repository.findById(id)
+            .filter(doc -> tenantId.equals(doc.getTenantId()))
             .orElseThrow(() -> new NotFoundException("DOCUMENT_NOT_FOUND"));
     }
 
@@ -74,7 +79,8 @@ public class DocumentService {
         Document doc = getById(id);
         try {
             Files.deleteIfExists(basePath.resolve(doc.getStoragePath()));
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            log.warn("Failed to delete file: {}", doc.getStoragePath(), e);
         }
         repository.delete(doc);
     }

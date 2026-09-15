@@ -43,18 +43,28 @@ public class AssetService {
 
     @Transactional
     public Asset assign(UUID id, UUID employeeId) {
-        Asset asset = repository.findById(id).orElseThrow(() -> new NotFoundException("Asset not found: " + id));
+        Asset asset = findByIdScoped(id);
         asset.assignTo(employeeId);
         return repository.save(asset);
     }
 
     @Transactional
     public Asset unassign(UUID id) {
-        Asset asset = repository.findById(id).orElseThrow(() -> new NotFoundException("Asset not found: " + id));
+        Asset asset = findByIdScoped(id);
         asset.unassign();
         return repository.save(asset);
     }
 
     @Transactional
-    public void delete(UUID id) { repository.deleteById(id); }
+    public void delete(UUID id) {
+        Asset asset = findByIdScoped(id);
+        repository.delete(asset);
+    }
+
+    private Asset findByIdScoped(UUID id) {
+        String tenantId = TenantContext.get();
+        return repository.findById(id)
+            .filter(a -> tenantId.equals(a.getTenantId()))
+            .orElseThrow(() -> new NotFoundException("Asset not found: " + id));
+    }
 }

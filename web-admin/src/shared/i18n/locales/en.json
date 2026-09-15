@@ -138,7 +138,8 @@
       "username": "Username",
       "password": "Password",
       "submit": "Sign in",
-      "error": "Invalid username or password."
+      "error": "Invalid username or password.",
+      "invalid": "Invalid value."
     }
   },
   "table": {

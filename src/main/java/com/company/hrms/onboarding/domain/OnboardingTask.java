@@ -38,6 +38,7 @@ public class OnboardingTask extends AuditableEntity {
     }
 
     public UUID getId() { return id; }
+    public String getTenantId() { return tenantId; }
     public UUID getEmployeeId() { return employeeId; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }

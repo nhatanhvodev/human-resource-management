@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PayrollPage from "./PayrollPage";
+import { renderWithProviders } from "../../test/utils";
 
 const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
@@ -66,7 +67,7 @@ describe("PayrollPage", () => {
   });
 
   it("renders seeded periods and payslips returned as an array", async () => {
-    render(<PayrollPage />);
+    renderWithProviders(<PayrollPage />);
 
     expect(await screen.findByText("2024-01-01 - 2024-01-31")).toBeInTheDocument();
 

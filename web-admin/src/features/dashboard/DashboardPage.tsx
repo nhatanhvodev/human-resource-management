@@ -1,11 +1,10 @@
 import { Alert, Card, Col, Empty, Row, Skeleton, Statistic, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import ReactECharts from "echarts-for-react";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiClient } from "../../shared/api/client";
 import { API } from "../../shared/api/endpoints";
+import { asArray, useApiQuery } from "../../shared/api/query";
 
 type DashboardSummary = {
   totalEmployees: number;
@@ -41,40 +40,20 @@ const { Text } = Typography;
 
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const [summary, setSummary] = useState<DashboardSummary>(defaultSummary);
-  const [activities, setActivities] = useState<DashboardActivity[]>([]);
-  const [headcounts, setHeadcounts] = useState<DepartmentHeadcount[]>([]);
-  const [distribution, setDistribution] = useState<DepartmentDistribution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [summaryR, activityR, headcountR, distR] = await Promise.all([
-          apiClient.get<DashboardSummary>(API.DASHBOARD.SUMMARY),
-          apiClient.get<DashboardActivity[]>(API.DASHBOARD.ACTIVITIES),
-          apiClient.get<DepartmentHeadcount[]>(API.DASHBOARD.HEADCOUNT_BY_DEPT),
-          apiClient.get<DepartmentDistribution[]>(API.DASHBOARD.DEPT_DISTRIBUTION)
-        ]);
-        if (mounted) {
-          setSummary({ ...defaultSummary, ...(summaryR.data ?? {}) });
-          setActivities(Array.isArray(activityR.data) ? activityR.data : []);
-          setHeadcounts(Array.isArray(headcountR.data) ? headcountR.data : []);
-          setDistribution(Array.isArray(distR.data) ? distR.data : []);
-        }
-      } catch {
-        if (mounted) setError(t("pages.dashboard.loadError"));
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    void load();
-    return () => { mounted = false; };
-  }, [t]);
+  const summaryQuery = useApiQuery<DashboardSummary>(['dashboard', 'summary'], API.DASHBOARD.SUMMARY);
+  const activitiesQuery = useApiQuery<DashboardActivity[]>(['dashboard', 'activities'], API.DASHBOARD.ACTIVITIES);
+  const headcountQuery = useApiQuery<DepartmentHeadcount[]>(['dashboard', 'headcount'], API.DASHBOARD.HEADCOUNT_BY_DEPT);
+  const distQuery = useApiQuery<DepartmentDistribution[]>(['dashboard', 'distribution'], API.DASHBOARD.DEPT_DISTRIBUTION);
+
+  const loading = summaryQuery.isLoading || activitiesQuery.isLoading || headcountQuery.isLoading || distQuery.isLoading;
+  const failed = summaryQuery.isError || activitiesQuery.isError || headcountQuery.isError || distQuery.isError;
+
+  const summary = { ...defaultSummary, ...(summaryQuery.data ?? {}) };
+  const activities = asArray<DashboardActivity>(activitiesQuery.data);
+  const headcounts = asArray<DepartmentHeadcount>(headcountQuery.data);
+  const distribution = asArray<DepartmentDistribution>(distQuery.data);
+  const error = failed ? t("pages.dashboard.loadError") : null;
 
   const activityColumns: ColumnsType<DashboardActivity> = [
     { title: t("pages.dashboard.activityType"), dataIndex: "type", width: 180 },
