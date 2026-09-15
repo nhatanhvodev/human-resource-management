@@ -152,7 +152,7 @@ class SecurityAccessIT {
     }
 
     private static String signedJwt(String subject, String employeeId, List<String> authorities) throws Exception {
-        ClassPathResource resource = new ClassPathResource("keys/dev-private.pem");
+        ClassPathResource resource = new ClassPathResource("keys/test-private.pem");
         String pem = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         String keyContent = pem
             .replace("-----BEGIN PRIVATE KEY-----", "")
